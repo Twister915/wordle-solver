@@ -82,6 +82,7 @@ impl Data {
         };
         log::debug!("got frequency data for {} words", out.frequency_data.by_word.len());
         log::debug!("got {} allowed words from data file", out.allowed_words.len());
+        log::debug!("got {} default items", out.default_state_data.len());
         Ok(out)
     }
 }

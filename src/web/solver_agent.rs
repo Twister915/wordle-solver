@@ -2,7 +2,6 @@ use std::collections::HashSet;
 use instant::Instant;
 use yew_agent::{Agent, AgentLink, HandlerId, Public};
 use serde::{Serialize, Deserialize};
-use crate::web::app::Msg::SolverMsg;
 use crate::wordle::{ColoringsArray, Guess, ScoredCandidate, Solver, SolverErr, WordleFloat};
 
 pub const N_RECOMMENDATIONS: usize = 24;

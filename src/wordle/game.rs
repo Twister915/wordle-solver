@@ -7,7 +7,6 @@ use serde::{Serialize, Deserialize};
 pub struct Solver<'a> {
     possible_words: HashSet<&'a str>,
     word_probabilities: HashMap<&'a str, WordleFloat>,
-    frequency_data: &'a FrequencyData,
     default_state_guesses: Vec<ScoredCandidate<'a>>,
 
     guesses: [Option<Guess>; NUM_TURNS],
@@ -163,7 +162,6 @@ impl Default for Solver<'static> {
         let default_state_guesses = compute_default_state_guesses(&possible_words, &DATA.default_state_data).collect();
         Self {
             possible_words,
-            frequency_data,
             word_probabilities,
             default_state_guesses,
 

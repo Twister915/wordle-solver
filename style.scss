@@ -1,0 +1,60 @@
+html, body {
+  margin: 0;
+  padding: 0;
+}
+
+.body {
+  display: flex;
+  height: 100%;
+  font-family: 'Courier New', monospace;
+}
+
+.suggestions {
+  margin-left: auto;
+  display: flex;
+  flex-direction: column;
+  border-left: dimgray 2px solid;
+  padding: 20px 10px;
+  min-width: 275px;
+
+  .load-time {
+    color: dimgray;
+    margin-bottom: 20px;
+  }
+
+  .list {
+    display: flex;
+    flex-direction: column;
+    align-items: end;
+
+    .item {
+      display: flex;
+      align-items: baseline;
+      margin-bottom: 4px;
+      cursor: pointer;
+
+      .ordinal {
+        margin-right: 8px;
+      }
+
+      .word {
+        font-size: 21px;
+        font-weight: bold;
+      }
+
+      .details {
+        font-size: 14px;
+        color: dimgray;
+        padding-left: 10px;
+        user-select: none;
+
+        span {
+          &:first-child {
+            padding-left: 5px;
+          }
+          padding-right: 9px;
+        }
+      }
+    }
+  }
+}

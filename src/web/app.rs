@@ -33,7 +33,7 @@ impl Default for RecommendationLoadStatus {
 impl RecommendationLoadStatus {
     fn is_loading(&self) -> bool {
         match self {
-            RecommendationLoadStatus::Loading(_) => true,
+            Self::Loading(_) => true,
             _ => false,
         }
     }
@@ -43,7 +43,7 @@ impl RecommendationLoadStatus {
     }
 
     fn start(&mut self) -> bool {
-        let mut old = RecommendationLoadStatus::Loading(Instant::now());
+        let mut old = Self::default();
         std::mem::swap(self, &mut old);
         old.is_ready()
 
@@ -51,9 +51,9 @@ impl RecommendationLoadStatus {
 
     fn finish(&mut self) -> bool {
         match self {
-            RecommendationLoadStatus::Loading(start_at) => {
+            Self::Loading(start_at) => {
                 let elapsed = start_at.elapsed();
-                *self = RecommendationLoadStatus::Completed(elapsed);
+                *self = Self::Completed(elapsed);
                 true
             },
             _ => false,
@@ -102,7 +102,8 @@ impl Component for App {
 
     fn view(&self, ctx: &Context<Self>) -> Html {
         html! {
-            <div>
+            <div class="body">
+                {self.show_center_html(ctx)}
                 {self.show_recommendation_html(ctx)}
             </div>
         }
@@ -138,6 +139,22 @@ impl App {
         }
     }
 
+    fn show_center_html(&self, ctx: &Context<Self>) -> Html {
+        html! {
+            <div class="center">
+                {Self::show_title_html()}
+            </div>
+        }
+    }
+
+    fn show_title_html() -> Html {
+        html! {
+            <div class="title">
+                {"Joey's Wordle Bot"}
+            </div>
+        }
+    }
+
     fn show_recommendation_html(&self, ctx: &Context<Self>) -> Html {
         html! {
             <div class="suggestions">
@@ -160,7 +177,7 @@ impl App {
 
     fn show_recommendation_load_time(&self, dur: &Duration) -> Html {
         html! {
-            <div class="load-time">{format!("Loaded in {:.02}s", dur.as_secs_f64())}</div>
+            <div class="load-time">{format!("loaded in {:.02}s...", dur.as_secs_f64())}</div>
         }
     }
 
@@ -168,16 +185,20 @@ impl App {
         html! {
             <div class="list">
                 {
-                    self.recommendations.current.iter().map(|item| Self::show_recommendation_item(item, ctx)).collect::<Html>()
+                    self.recommendations.current.iter()
+                        .enumerate()
+                        .map(|(idx, item)| Self::show_recommendation_item(idx, item, ctx))
+                        .collect::<Html>()
                 }
             </div>
         }
     }
 
-    fn show_recommendation_item(item: &ScoredCandidateDto, ctx: &Context<Self>) -> Html {
+    fn show_recommendation_item(idx: usize, item: &ScoredCandidateDto, ctx: &Context<Self>) -> Html {
         let word_cloned = item.word.clone();
         html! {
             <div class="item" onclick={ctx.link().callback(move |_| Msg::PickRecommendation(word_cloned.clone()))}>
+                <div class="ordinal">{format!("#{:02}", idx + 1)}</div>
                 <div class="word">{&item.word}</div>
                 <div class="details">
                     <span class="score">{format!("{:.2}", item.score)}</span>
