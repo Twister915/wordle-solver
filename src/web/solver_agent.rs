@@ -1,15 +1,16 @@
 use std::collections::HashSet;
+use instant::Instant;
 use yew_agent::{Agent, AgentLink, HandlerId, Public};
 use serde::{Serialize, Deserialize};
 use crate::web::app::Msg::SolverMsg;
 use crate::wordle::{ColoringsArray, Guess, ScoredCandidate, Solver, SolverErr, WordleFloat};
 
-const N_RECOMMENDATIONS: usize = 16;
+pub const N_RECOMMENDATIONS: usize = 24;
 
 pub struct SolverAgent {
     link: AgentLink<Self>,
     subscribers: HashSet<HandlerId>,
-    game: Solver<'static>,
+    solver: Solver<'static>,
 
     cached_recommendations: Option<Vec<ScoredCandidateDto>>,
     cached_state: Option<GameStateDto>,
@@ -92,10 +93,14 @@ impl Agent for SolverAgent {
 
     fn create(link: AgentLink<Self>) -> Self {
         log::debug!("creating solver agent...");
+        let start_at = Instant::now();
+        let solver = Solver::default();
+        let setup_time = start_at.elapsed();
+        log::debug!("solver setup in {:.02}s", setup_time.as_secs_f64());
         Self {
             link,
             subscribers: HashSet::with_capacity(8),
-            game: Solver::default(),
+            solver,
 
             cached_recommendations: None,
             cached_state: None,
@@ -136,7 +141,7 @@ impl Agent for SolverAgent {
 
 impl SolverAgent {
     fn handle_guess(&mut self, guess: GuessDto) {
-        if let Err(err) = self.game.make_guess(guess.guess.as_str(), guess.colorings.into()) {
+        if let Err(err) = self.solver.make_guess(guess.guess.as_str(), guess.colorings.into()) {
             self.broadcast(SolverResp::GuessFailed(err));
         } else {
             self.invalidate();
@@ -153,7 +158,7 @@ impl SolverAgent {
         if self.cached_recommendations.is_none() {
             self.broadcast(SolverResp::StartComputingRecommendations);
 
-            self.cached_recommendations = Some(self.game
+            self.cached_recommendations = Some(self.solver
                 .top_k_guesses::<N_RECOMMENDATIONS>()
                 .map(|item| item.into())
                 .collect());
@@ -178,7 +183,7 @@ impl SolverAgent {
 
     fn game_state(&mut self) -> &GameStateDto {
         if self.cached_state.is_none() {
-            self.cached_state = Some(GameStateDto::with_solver(&self.game));
+            self.cached_state = Some(GameStateDto::with_solver(&self.solver));
         }
 
         self.cached_state.as_ref().unwrap()
@@ -189,7 +194,7 @@ impl SolverAgent {
     }
 
     fn reset(&mut self) {
-        self.game.reset();
+        self.solver.reset();
         self.invalidate();
         self.send_game_state();
         self.broadcast(SolverResp::UpdateRecommendations(Vec::default()));

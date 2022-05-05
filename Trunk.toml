@@ -1,0 +1,7 @@
+[watch]
+ignore = ["data/"]
+
+[[hooks]]
+stage = "pre_build"
+command = "cargo"
+command_arguments = ["run", "--bin", "gen_default_state_data", "--release"]

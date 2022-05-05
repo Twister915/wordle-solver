@@ -8,6 +8,7 @@ pub struct Solver<'a> {
     possible_words: HashSet<&'a str>,
     word_probabilities: HashMap<&'a str, WordleFloat>,
     frequency_data: &'a FrequencyData,
+    default_state_guesses: Vec<ScoredCandidate<'a>>,
 
     guesses: [Option<Guess>; NUM_TURNS],
     remaining_possibilities: HashSet<&'a str>,
@@ -159,10 +160,12 @@ impl Default for Solver<'static> {
         let word_probabilities = compute_word_probabilities(&possible_words, &frequency_data).collect();
         let word_weights = compute_word_weights(&possible_words, &word_probabilities).collect();
         let remaining_possibilities = possible_words.clone();
+        let default_state_guesses = compute_default_state_guesses(&possible_words, &DATA.default_state_data).collect();
         Self {
             possible_words,
             frequency_data,
             word_probabilities,
+            default_state_guesses,
 
             guesses: [None; NUM_TURNS],
             remaining_possibilities,
@@ -180,7 +183,7 @@ pub enum SolverErr {
     #[error("the wordle puzzle is already solved")]
     AlreadySolved,
     #[error("provided guess is not valid")]
-    InvalidGuess(String)
+    InvalidGuess(String),
 }
 
 impl<'a> Solver<'a> {
@@ -265,11 +268,28 @@ impl<'a> Solver<'a> {
         None
     }
 
+    fn is_default_state(&self) -> bool {
+        self.num_guesses() == 0
+    }
+
     pub fn top_k_guesses<'b, const K: usize>(&'b self) -> TopK<ScoredCandidate<'a>, K>
-    where
-        'a: 'b,
-        [Option<ScoredCandidate<'a>>; K]: Default,
-        [Option<Score>; K]: Default,
+        where
+            'a: 'b,
+            [Option<ScoredCandidate<'a>>; K]: Default,
+            [Option<Score>; K]: Default,
+    {
+        if self.is_default_state() && self.default_state_guesses.len() >= K {
+            self.default_state_guesses.iter().copied().top_k(|item| item.score)
+        } else {
+            self.top_k_guesses_real()
+        }
+    }
+
+    pub fn top_k_guesses_real<'b, const K: usize>(&'b self) -> TopK<ScoredCandidate<'a>, K>
+        where
+            'a: 'b,
+            [Option<ScoredCandidate<'a>>; K]: Default,
+            [Option<Score>; K]: Default
     {
         self.remaining_possibilities
             .iter()
@@ -378,4 +398,27 @@ fn compute_word_weights<'a: 'b, 'b>(
 {
     let total: WordleFloat = words.iter().map(|w| probabilities[w]).sum();
     words.iter().map(move |w| (*w, probabilities[w] / total))
+}
+
+fn compute_default_state_guesses<'a: 'b, 'b>(
+    words: &'b HashSet<&'a str>,
+    supplied_data: &'b Vec<DefaultStateEntry>,
+) -> impl Iterator<Item=ScoredCandidate<'a>> + 'b {
+    supplied_data.iter().map(|entry| {
+        let word = *words.iter()
+            .filter(|item| *item == &entry.word)
+            .next()
+            .expect("default state data should contain possible words only");
+
+        let score = Score {
+            abs: entry.score,
+            expected_info: entry.expected_info,
+            weight: entry.weight,
+        };
+
+        ScoredCandidate {
+            word,
+            score,
+        }
+    })
 }
