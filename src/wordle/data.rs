@@ -26,7 +26,7 @@ struct RawData;
 pub struct Data {
     pub frequency_data: FrequencyData,
     pub allowed_words: Vec<String>,
-    pub default_state_data: Vec<DefaultStateEntry>,
+    pub default_state_data: Option<Vec<DefaultStateEntry>>,
 }
 
 #[derive(Clone, Debug)]
@@ -61,8 +61,6 @@ pub enum LoadDataErr {
     MissingFrequencyDataFile,
     #[error("missing allowed words file")]
     MissingAllowedWordsFile,
-    #[error("missing default state data file")]
-    MissingDefaultStateDataFile,
     #[error("failed to parse number '{0}'")]
     BadFrequencyNumber(String, #[source] ParseIntError),
     #[error(transparent)]
@@ -82,7 +80,9 @@ impl Data {
         };
         log::debug!("got frequency data for {} words", out.frequency_data.by_word.len());
         log::debug!("got {} allowed words from data file", out.allowed_words.len());
-        log::debug!("got {} default items", out.default_state_data.len());
+        if let Some(default_state) = &out.default_state_data {
+            log::debug!("got {} default items", default_state.len());
+        }
         Ok(out)
     }
 }
@@ -137,11 +137,13 @@ fn try_read_allowed_words() -> Result<Vec<String>, LoadDataErr> {
         .collect())
 }
 
-fn try_read_default_state_data() -> Result<Vec<DefaultStateEntry>, LoadDataErr> {
+fn try_read_default_state_data() -> Result<Option<Vec<DefaultStateEntry>>, LoadDataErr> {
+    let raw_data = match retrieve_file_as_str(DEFAULT_STATE_DATA_FILE_NAME)? {
+        Some(data) => data,
+        None => return Ok(None),
+    };
     let mut out = Vec::with_capacity(N_RECOMMENDATIONS);
-    for line in retrieve_file_as_str(DEFAULT_STATE_DATA_FILE_NAME)?
-        .ok_or(LoadDataErr::MissingDefaultStateDataFile)?
-        .lines()
+    for line in raw_data.lines()
     {
         let mut parts = line.splitn(4, " ");
         let word = if let Some(w) = parts.next() {
@@ -169,7 +171,7 @@ fn try_read_default_state_data() -> Result<Vec<DefaultStateEntry>, LoadDataErr> 
         });
     }
 
-    Ok(out)
+    Ok(Some(out))
 }
 
 fn retrieve_file_as_str(name: &str) -> Result<Option<String>, LoadDataErr> {

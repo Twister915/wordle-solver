@@ -7,7 +7,7 @@ use serde::{Serialize, Deserialize};
 pub struct Solver<'a> {
     possible_words: HashSet<&'a str>,
     word_probabilities: HashMap<&'a str, WordleFloat>,
-    default_state_guesses: Vec<ScoredCandidate<'a>>,
+    default_state_guesses: Option<Vec<ScoredCandidate<'a>>>,
 
     guesses: [Option<Guess>; NUM_TURNS],
     remaining_possibilities: HashSet<&'a str>,
@@ -159,7 +159,7 @@ impl Default for Solver<'static> {
         let word_probabilities = compute_word_probabilities(&possible_words, &frequency_data).collect();
         let word_weights = compute_word_weights(&possible_words, &word_probabilities).collect();
         let remaining_possibilities = possible_words.clone();
-        let default_state_guesses = compute_default_state_guesses(&possible_words, &DATA.default_state_data).collect();
+        let default_state_guesses = DATA.default_state_data.as_ref().map(|dsd| compute_default_state_guesses(&possible_words, dsd).collect());
         Self {
             possible_words,
             word_probabilities,
@@ -276,11 +276,15 @@ impl<'a> Solver<'a> {
             [Option<ScoredCandidate<'a>>; K]: Default,
             [Option<Score>; K]: Default,
     {
-        if self.is_default_state() && self.default_state_guesses.len() >= K {
-            self.default_state_guesses.iter().copied().top_k(|item| item.score)
-        } else {
-            self.top_k_guesses_real()
+        if self.is_default_state() {
+            if let Some(dsd) = &self.default_state_guesses {
+                if dsd.len() >= K {
+                    return dsd.iter().copied().top_k(|item| item.score);
+                }
+            }
         }
+
+        self.top_k_guesses_real()
     }
 
     pub fn top_k_guesses_real<'b, const K: usize>(&'b self) -> TopK<ScoredCandidate<'a>, K>

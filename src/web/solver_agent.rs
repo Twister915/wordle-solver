@@ -2,7 +2,7 @@ use std::collections::HashSet;
 use instant::Instant;
 use yew_agent::{Agent, AgentLink, HandlerId, Public};
 use serde::{Serialize, Deserialize};
-use crate::wordle::{ColoringsArray, Guess, ScoredCandidate, Solver, SolverErr, WordleFloat};
+use crate::wordle::{ColoringsArray, Guess, ScoredCandidate, Solver, SolverErr, WORD_SIZE, WordleFloat};
 
 pub const N_RECOMMENDATIONS: usize = 24;
 
@@ -52,14 +52,14 @@ impl GameStateDto {
 
 #[derive(Clone, Serialize, Deserialize, PartialEq, Eq, Debug)]
 pub struct GuessDto {
-    pub guess: String,
+    pub guess: [u8; WORD_SIZE],
     pub colorings: ColoringsArray,
 }
 
 impl From<Guess> for GuessDto {
     fn from(other: Guess) -> Self {
         Self {
-            guess: std::str::from_utf8(&other.word).expect("must be utf8").to_string(),
+            guess: other.word,
             colorings: other.coloring.0,
         }
     }
