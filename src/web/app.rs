@@ -350,7 +350,7 @@ impl App {
         self.worker.send(SolverReq::MakeRecommendations);
 
         self.filled_guess = [None; WORD_SIZE];
-        self.filled_colors = [Coloring::Misplaced; WORD_SIZE];
+        self.filled_colors = [Coloring::Excluded; WORD_SIZE];
         true
     }
 }
