@@ -1,10 +1,11 @@
 use std::collections::HashSet;
+use std::str::from_utf8;
 use instant::Instant;
 use yew_agent::{Agent, AgentLink, HandlerId, Public};
 use serde::{Serialize, Deserialize};
 use crate::wordle::{ColoringsArray, Guess, ScoredCandidate, Solver, SolverErr, WORD_SIZE, WordleFloat};
 
-pub const N_RECOMMENDATIONS: usize = 24;
+pub const N_RECOMMENDATIONS: usize = 32;
 
 pub struct SolverAgent {
     link: AgentLink<Self>,
@@ -140,7 +141,7 @@ impl Agent for SolverAgent {
 
 impl SolverAgent {
     fn handle_guess(&mut self, guess: GuessDto) {
-        if let Err(err) = self.solver.make_guess(guess.guess.as_str(), guess.colorings.into()) {
+        if let Err(err) = self.solver.make_guess(from_utf8(&guess.guess).unwrap(), guess.colorings.into()) {
             self.broadcast(SolverResp::GuessFailed(err));
         } else {
             self.invalidate();

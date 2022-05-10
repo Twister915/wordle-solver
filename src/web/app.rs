@@ -2,7 +2,7 @@ use instant::{Duration, Instant};
 use yew::prelude::*;
 use yew_agent::{Bridge, Bridged};
 use crate::web::solver_agent::{GameStateDto, GuessDto, ScoredCandidateDto, SolverAgent, SolverReq, SolverResp};
-use crate::wordle::{NUM_TURNS, SolverErr};
+use crate::wordle::{Coloring, is_wordle_str, NUM_TURNS, SolverErr, WORD_SIZE};
 
 pub struct App {
     worker: Box<dyn Bridge<SolverAgent>>,
@@ -10,6 +10,8 @@ pub struct App {
     game_state: Option<GameStateDto>,
     recommendations: RecommendationState,
     latest_err: Option<SolverErr>,
+    filled_guess: [Option<char>; WORD_SIZE],
+    filled_colors: [Coloring; WORD_SIZE],
 }
 
 #[derive(Debug)]
@@ -74,6 +76,8 @@ impl Default for RecommendationState {
 pub enum Msg {
     SolverMsg(SolverResp),
     PickRecommendation(String),
+    UpdateColoring(usize),
+    MakeGuess,
 }
 
 impl Component for App {
@@ -88,6 +92,8 @@ impl Component for App {
             game_state: None,
             recommendations: RecommendationState::default(),
             latest_err: None,
+            filled_guess: [None; WORD_SIZE],
+            filled_colors: [Coloring::Excluded; WORD_SIZE],
         }
     }
 
@@ -96,7 +102,21 @@ impl Component for App {
         use Msg::*;
         match msg {
             SolverMsg(data) => self.handle_solver_msg(data),
-            PickRecommendation(_) => false,
+            PickRecommendation(recommendation) => {
+                self.accept_suggestion(recommendation.as_str());
+                true
+            },
+            UpdateColoring(idx) => {
+                let src = &mut self.filled_colors[idx];
+                let mut next_coloring = match *src {
+                    Coloring::Excluded => Coloring::Misplaced,
+                    Coloring::Misplaced => Coloring::Correct,
+                    Coloring::Correct => Coloring::Excluded,
+                };
+                std::mem::swap(src, &mut next_coloring);
+                true
+            }
+            MakeGuess => self.make_guess()
         }
     }
 
@@ -143,6 +163,7 @@ impl App {
         html! {
             <div class="center">
                 {Self::show_title_html()}
+                {self.show_game(ctx)}
             </div>
         }
     }
@@ -209,8 +230,19 @@ impl App {
         }
     }
 
+    fn show_game(&self, ctx: &Context<Self>) -> Html {
+        match &self.game_state {
+            Some(state) => self.show_wordle_game(ctx, state),
+            None => html! { <></> },
+        }
+    }
+
     fn show_wordle_game(&self, ctx: &Context<Self>, state: &GameStateDto) -> Html {
-        (0..NUM_TURNS).map(|idx| self.show_wordle_row(ctx, state, idx)).collect()
+        html! {
+            <div class="game">
+                {(0..NUM_TURNS).map(|idx| self.show_wordle_row(ctx, state, idx)).collect::<Html>()}
+            </div>
+        }
     }
 
     fn show_wordle_row(&self, ctx: &Context<Self>, state: &GameStateDto, idx: usize) -> Html {
@@ -219,19 +251,106 @@ impl App {
         } else if idx == state.guesses.len() && state.can_guess {
             self.show_wordle_active_row(ctx, state, idx)
         } else {
-            self.show_wordle_empty_row(ctx)
+            self.show_wordle_empty_row()
         }
     }
 
     fn show_wordle_guessed_row(&self, ctx: &Context<Self>, state: &GameStateDto, guess: &GuessDto, idx: usize) -> Html {
-
+        html! {
+            <div class="game-row filled inactive">
+                {
+                    (0..WORD_SIZE).zip(guess.guess.iter().copied()).map(|(idx, chr)| html! {
+                        <div class="game-cell filled inactive">{chr as char}</div>
+                    }).collect::<Html>()
+                }
+            </div>
+        }
     }
 
     fn show_wordle_active_row(&self, ctx: &Context<Self>, state: &GameStateDto, idx: usize) -> Html {
-
+        let active_idx = self.next_chr_idx();
+        log::debug!("active_idx = {:?}", &active_idx);
+        html! {
+            <div class="game-row active">
+                {
+                    self.filled_guess.iter().copied().zip(self.filled_colors.iter()).enumerate().map(|(idx, (chr, coloring))| html! {
+                        <div class={classes!(
+                            "game-cell",
+                            active_idx.filter(|a_idx| *a_idx == idx).map(|_| "active").unwrap_or("inactive"),
+                            chr.map(|_| "filled").unwrap_or("unfilled"),
+                            match coloring {
+                                Coloring::Excluded => "c-excluded",
+                                Coloring::Misplaced => "c-misplaced",
+                                Coloring::Correct => "c-correct",
+                            })}
+                            onclick={ctx.link().callback(move |_| Msg::UpdateColoring(idx))}
+                        >
+                            { chr.unwrap_or(' ') }
+                        </div>
+                    }).collect::<Html>()
+                }
+                <div class="buttons">
+                    <div class="reset-button button">{"X"}</div>
+                    <div class="confirm-button button" onclick={ctx.link().callback(move |_| Msg::MakeGuess)}>{"OK"}</div>
+                </div>
+            </div>
+        }
     }
 
-    fn show_wordle_empty_row(&self, ctx: &Context<Self>) -> Html {
+    fn show_wordle_empty_row(&self) -> Html {
+        html! {
+            <div class="game-row empty inactive">
+                {
+                    (0..WORD_SIZE).map(|idx| html! {
+                        <div class="game-cell empty inactive"></div>
+                    }).collect::<Html>()
+                }
+            </div>
+        }
+    }
 
+    fn next_chr_idx(&self) -> Option<usize> {
+        for (idx, c) in self.filled_guess.iter().enumerate() {
+            if c.is_none() {
+                return Some(idx);
+            }
+        }
+
+        None
+    }
+
+    fn accept_suggestion(&mut self, suggestion: &str) {
+        debug_assert!(is_wordle_str(suggestion));
+
+        let bs = suggestion.as_bytes();
+        for (src, target) in bs.iter().copied().zip(self.filled_guess.iter_mut()) {
+            *target = Some(src as char);
+        }
+    }
+
+    fn can_guess(&self) -> bool {
+        self.filled_guess.iter().all(|v| v.is_some())
+    }
+
+    fn make_guess(&mut self) -> bool {
+        let mut guess= [0; WORD_SIZE];
+        for i in 0..WORD_SIZE {
+            if let Some(c) = *&self.filled_guess[i] {
+                guess[i] = c as u8;
+            } else {
+                return false;
+            }
+        }
+
+        self.worker.send(SolverReq::MakeGuess(GuessDto {
+            guess,
+            colorings: *&self.filled_colors,
+        }));
+
+        self.worker.send(SolverReq::MakeRecommendations);
+
+        self.filled_guess = [None; WORD_SIZE];
+        self.filled_colors = [Coloring::Misplaced; WORD_SIZE];
+        true
     }
 }

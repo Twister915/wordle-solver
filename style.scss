@@ -58,3 +58,39 @@ html, body {
     }
   }
 }
+
+.game {
+  .game-row {
+    display: flex;
+    margin-bottom: 3px;
+    &.active .game-cell {
+      cursor: pointer;
+    }
+
+    .game-cell {
+      $wh: 40px;
+      width: $wh;
+      height: $wh;
+      margin-right: 3px;
+      border-radius: 3px;
+      box-sizing: border-box;
+      font-size: 2rem;
+      color: white;
+      text-align: center;
+      user-select: none;
+
+      &.c-correct {
+        background-color: #538d4e;
+      }
+
+      &.c-misplaced {
+        background-color: #b59f3b;
+      }
+
+      &.c-excluded, &.empty {
+        background-color: #818384;
+      }
+    }
+  }
+
+}
