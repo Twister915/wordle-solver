@@ -1,8 +1,8 @@
 use instant::{Duration, Instant};
 use yew::prelude::*;
 use yew_agent::{Bridge, Bridged};
-use crate::web::solver_agent::{GameStateDto, ScoredCandidateDto, SolverAgent, SolverReq, SolverResp};
-use crate::wordle::SolverErr;
+use crate::web::solver_agent::{GameStateDto, GuessDto, ScoredCandidateDto, SolverAgent, SolverReq, SolverResp};
+use crate::wordle::{NUM_TURNS, SolverErr};
 
 pub struct App {
     worker: Box<dyn Bridge<SolverAgent>>,
@@ -207,5 +207,31 @@ impl App {
                 </div>
             </div>
         }
+    }
+
+    fn show_wordle_game(&self, ctx: &Context<Self>, state: &GameStateDto) -> Html {
+        (0..NUM_TURNS).map(|idx| self.show_wordle_row(ctx, state, idx)).collect()
+    }
+
+    fn show_wordle_row(&self, ctx: &Context<Self>, state: &GameStateDto, idx: usize) -> Html {
+        if let Some(guess) = state.guesses.get(idx) {
+            self.show_wordle_guessed_row(ctx, state, guess, idx)
+        } else if idx == state.guesses.len() && state.can_guess {
+            self.show_wordle_active_row(ctx, state, idx)
+        } else {
+            self.show_wordle_empty_row(ctx)
+        }
+    }
+
+    fn show_wordle_guessed_row(&self, ctx: &Context<Self>, state: &GameStateDto, guess: &GuessDto, idx: usize) -> Html {
+
+    }
+
+    fn show_wordle_active_row(&self, ctx: &Context<Self>, state: &GameStateDto, idx: usize) -> Html {
+
+    }
+
+    fn show_wordle_empty_row(&self, ctx: &Context<Self>) -> Html {
+
     }
 }
