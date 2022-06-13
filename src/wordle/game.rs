@@ -243,6 +243,10 @@ impl<'a> Solver<'a> {
         self.num_guesses() < NUM_TURNS && !self.is_solved() && self.has_possible_guesses()
     }
 
+    pub fn can_use_guess(&self, guess: &str) -> bool {
+        self.possible_words.contains(guess)
+    }
+
     pub fn is_solved(&self) -> bool {
         let n_guesses = self.num_guesses();
         n_guesses > 0 && self.guesses[n_guesses - 1].map(|v| v.is_correct()).unwrap_or(false)
@@ -254,6 +258,23 @@ impl<'a> Solver<'a> {
 
     pub fn has_possible_guesses(&self) -> bool {
         !self.remaining_possibilities.is_empty()
+    }
+
+    pub fn num_remaining_possibilities(&self) -> usize {
+        self.remaining_possibilities.len()
+    }
+
+    pub fn num_total_possibilities(&self) -> usize {
+        self.possible_words.len()
+    }
+
+    pub fn remaining_entropy(&self) -> WordleFloat {
+        self.remaining_possibilities
+            .iter()
+            .copied()
+            .map(|word| self.freq_weight_for(word))
+            .map(|item| item * -(item.log2()))
+            .sum()
     }
 
     fn next_guess_idx(&self) -> Option<usize> {

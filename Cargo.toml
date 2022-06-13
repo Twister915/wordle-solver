@@ -12,7 +12,6 @@ authors = ["Joey Sacchini <joey@sacchini.net>"]
 
 [dependencies]
 yew = "0.19"
-yew-agent = "0.1"
 wasm-logger = "0.2"
 log = "0.4"
 wee_alloc = "0.4"

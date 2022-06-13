@@ -1,8 +1,7 @@
 use std::fs::File;
 use std::io::Write;
 use std::time::Instant;
-use wordle_site::web::solver_agent::N_RECOMMENDATIONS;
-use wordle_site::wordle::{DATA_DIRECTORY, DEFAULT_STATE_DATA_FILE_NAME};
+use wordle_site::wordle::{DATA_DIRECTORY, DEFAULT_STATE_DATA_FILE_NAME, N_RECOMMENDATIONS};
 
 fn main() {
     let at = format!("{}{}", DATA_DIRECTORY, DEFAULT_STATE_DATA_FILE_NAME);

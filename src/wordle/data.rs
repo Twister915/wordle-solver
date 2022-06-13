@@ -4,7 +4,6 @@ use std::str::Utf8Error;
 use rust_embed::RustEmbed;
 use thiserror::Error;
 use lazy_static::lazy_static;
-use crate::web::solver_agent::N_RECOMMENDATIONS;
 use crate::wordle::data::LoadDataErr::EncodingError;
 use crate::wordle::prelude::is_wordle_str;
 use crate::wordle::WordleFloat;
@@ -13,6 +12,7 @@ pub const DATA_DIRECTORY: &'static str = "data/";
 pub const FREQUENCY_FILE_NAME: &'static str = "5word_frequencies.txt";
 pub const ALLOWED_WORDS_FILE_NAME: &'static str = "allowed_words.txt";
 pub const DEFAULT_STATE_DATA_FILE_NAME: &'static str = "default_state_data.txt";
+pub const N_RECOMMENDATIONS: usize = 32;
 
 lazy_static! {
     pub static ref DATA: Data = Data::read().expect("should have no failures reading data...");
