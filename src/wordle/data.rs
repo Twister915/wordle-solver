@@ -1,3 +1,4 @@
+use crate::wordle::prelude::*;
 use std::collections::HashMap;
 use std::num::{ParseFloatError, ParseIntError};
 use std::str::Utf8Error;
@@ -5,8 +6,6 @@ use rust_embed::RustEmbed;
 use thiserror::Error;
 use lazy_static::lazy_static;
 use crate::wordle::data::LoadDataErr::EncodingError;
-use crate::wordle::prelude::is_wordle_str;
-use crate::wordle::WordleFloat;
 
 pub const DATA_DIRECTORY: &'static str = "data/";
 pub const FREQUENCY_FILE_NAME: &'static str = "5word_frequencies.txt";
@@ -98,7 +97,7 @@ fn try_read_frequency_data() -> Result<FrequencyData, LoadDataErr> {
 
     for line in file_data.lines() {
         if let Some((l, r)) = line.split_once(" ") {
-            let word = l.trim().to_lowercase();
+            let word = normalize_wordle_word(l);
             if is_wordle_str(&word) {
                 let frequency = r.trim()
                     .parse::<i64>()
@@ -132,7 +131,7 @@ fn try_read_allowed_words() -> Result<Vec<String>, LoadDataErr> {
     Ok(retrieve_file_as_str(ALLOWED_WORDS_FILE_NAME)?
         .ok_or(LoadDataErr::MissingAllowedWordsFile)?
         .lines()
-        .map(|line| line.trim().to_lowercase())
+        .map(|line| normalize_wordle_word(line))
         .filter(|line| is_wordle_str(line))
         .collect())
 }

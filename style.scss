@@ -26,6 +26,10 @@ html, body {
     .detail {
       font-size: 12px;
       color: dimgray;
+      max-width: 450px;
+      div {
+        margin-bottom: 10px;
+      }
     }
 
     margin-bottom: 10px;
@@ -132,6 +136,7 @@ html, body {
       display: inline-flex;
       justify-content: center;
       align-items: center;
+      text-transform: uppercase;
 
       &.c-correct {
         background-color: #538d4e;

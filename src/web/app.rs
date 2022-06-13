@@ -98,9 +98,14 @@ impl App {
             <div class="title">
                 <div class="hero">{"Joey's Wordle Bot"}</div>
                 <div class="detail">
-                    <>{"Solves "}</>
-                    <a href="https://www.nytimes.com/games/wordle/index.html" target="_blank" class="click-text">{"Wordle"}</a>
-                    <>{" by recommending guesses & updating as you play!"}</>
+                    <div>
+                        <>{"Solves "}</>
+                        <a href="https://www.nytimes.com/games/wordle/index.html" target="_blank" class="click-text">{"Wordle"}</a>
+                        <>{" by recommending guesses & updating as you play!"}</>
+                    </div>
+                    <div>
+                        {"Click on a recommendation, then click on the boxes below to change their color, then hit OK when the colors match the game you're playing"}
+                    </div>
                 </div>
             </div>
         }

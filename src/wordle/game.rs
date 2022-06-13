@@ -195,7 +195,7 @@ impl<'a> Solver<'a> {
         }
 
         let next_guess_idx = self.next_guess_idx().ok_or(SolverErr::TurnsExhausted)?;
-        let guess = guess.trim().to_lowercase();
+        let guess = normalize_wordle_word(guess);
 
         if !is_wordle_str(&guess) {
             return Err(SolverErr::InvalidGuess(guess));

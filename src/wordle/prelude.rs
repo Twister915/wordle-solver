@@ -31,10 +31,18 @@ pub fn is_wordle_str(v: &str) -> bool {
 }
 
 pub fn is_wordle_str_bytes(v: &[u8]) -> bool {
-    v.len() == WORD_SIZE && v.iter().all(|v| v.is_ascii_lowercase())
+    v.len() == WORD_SIZE && v.iter().all(|v| is_normal_wordle_char(v))
 }
 
 #[inline]
 pub fn sigmoid(v: WordleFloat) -> WordleFloat {
     (1.0 + (-v).exp()).recip()
+}
+
+pub fn normalize_wordle_word(str: &str) -> String {
+    str.trim().to_lowercase()
+}
+
+pub fn is_normal_wordle_char(v: &u8) -> bool {
+    v.is_ascii_lowercase()
 }
