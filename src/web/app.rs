@@ -106,6 +106,13 @@ impl App {
                     <div>
                         {"Click on a recommendation, then click on the boxes below to change their color, then hit OK when the colors match the game you're playing"}
                     </div>
+                    <div>
+                        <>{"Math based on "}</>
+                        <a href="https://www.youtube.com/watch?v=v68zYyaEmEA" target="_blank" class="click-text">{"Grant Sanderson (3blue1brown)'s Video"}</a>
+                        <>{" about using "}</>
+                        <a href="https://en.wikipedia.org/wiki/Entropy_(information_theory)" target="_blank" class="click-text">{"Information Theory"}</a>
+                        <>{" to solve Wordle."}</>
+                    </div>
                 </div>
             </div>
         }
@@ -140,7 +147,7 @@ impl App {
                 </div>
                 <div class="entropy">
                     {format!(
-                        "{:.02} bits of entropy",
+                        "Entropy is {:.02} bits",
                         self.solver.remaining_entropy(),
                     )}
                 </div>
@@ -221,6 +228,9 @@ impl App {
                         )}>{chr as char}</div>
                     }).collect::<Html>()
                 }
+                <div class="entropy">
+                    {format!("{:.02} bits (expected {:.02} bits)", guess.entropy_delta, guess.expected_info)}
+                </div>
             </div>
         }
     }
@@ -252,12 +262,12 @@ impl App {
                         "button",
                         "reset-button",
                         if self.enable_reset_button() { "enabled" } else { "disabled" },
-                    )} onclick={ctx.link().callback(move |_| Msg::ClearGuess)}>{"X"}</div>
+                    )} onclick={ctx.link().callback(move |_| Msg::ClearGuess)}>{"❌"}</div>
                     <div class={classes!(
                         "button",
                         "confirm-button",
                         if self.enable_confirm_button() { "enabled" } else { "disabled" },
-                    )} onclick={ctx.link().callback(move |_| Msg::MakeGuess)}>{"OK"}</div>
+                    )} onclick={ctx.link().callback(move |_| Msg::MakeGuess)}>{"✔️"}</div>
                 </div>
             </div>
         }

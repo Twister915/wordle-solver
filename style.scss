@@ -96,6 +96,7 @@ html, body {
 }
 
 .game {
+  $wh: 50px;
   .game-row {
     display: flex;
     margin-bottom: 3px;
@@ -106,24 +107,51 @@ html, body {
       }
 
       .buttons {
+        display: flex;
+        margin-left: 8px;
         .button {
+          display: inline-flex;
+          justify-content: center;
+          align-items: center;
+          width: $wh;
+          height: $wh;
+          margin-right: 3px;
+          border-radius: 3px;
+          box-sizing: border-box;
+          font-size: 2rem;
           font-weight: bold;
           user-select: none;
+          transition: background-color 0.25s ease-in-out;
+
           &.enabled {
             cursor: pointer;
-            color: black;
+
+            @mixin button-coloring($c) {
+              background-color: $c;
+              &:hover {
+                background-color: lighten($c, 20%);
+              }
+            }
+
+            &.reset-button {
+              @include button-coloring(#4a4a4a);
+            }
+
+            &.confirm-button {
+              @include button-coloring(#538d4e);
+            }
           }
 
           &.disabled {
             cursor: not-allowed;
-            color: dimgray;
+            background-color: #c6c6c6;
+            filter: grayscale(1);
           }
         }
       }
     }
 
     .game-cell {
-      $wh: 50px;
       width: $wh;
       height: $wh;
       margin-right: 3px;
@@ -149,6 +177,14 @@ html, body {
       &.c-excluded, &.empty {
         background-color: #818384;
       }
+    }
+
+    .entropy {
+      align-items: center;
+      display: inline-flex;
+      font-size: 12px;
+      font-style: italic;
+      padding-left: 12px;
     }
   }
 }

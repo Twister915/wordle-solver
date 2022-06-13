@@ -14,10 +14,12 @@ pub struct Solver<'a> {
     word_weights: HashMap<&'a str, WordleFloat>,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Guess {
     pub word: [u8; WORD_SIZE],
     pub coloring: Colorings,
+    pub expected_info: WordleFloat,
+    pub entropy_delta: WordleFloat,
 }
 
 impl Guess {
@@ -204,12 +206,17 @@ impl<'a> Solver<'a> {
         let mut word = [0u8; WORD_SIZE];
         word.copy_from_slice(guess.as_bytes());
 
+        let start_entropy = self.remaining_entropy();
         self.guesses[next_guess_idx] = Some(Guess {
             coloring,
             word,
+            expected_info: self.expected_guess_info(&guess),
+            entropy_delta: 0.0,
         });
 
         self.recompute_after_guess();
+
+        self.guesses[next_guess_idx].as_mut().unwrap().entropy_delta = start_entropy - self.remaining_entropy();
 
         Ok(())
     }
