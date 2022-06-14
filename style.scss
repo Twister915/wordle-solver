@@ -173,6 +173,42 @@ html, body {
         }
       }
 
+      $correct: #538d4e;
+      $misplaced: #b59f3b;
+      $excluded: #818384;
+
+      @mixin cell-coloring-helper($state, $class, $color) {
+        &#{$state} {
+          .game-cell#{$class} {
+            background-color: $color;
+          }
+        }
+      }
+
+      @function cell-inactive-recoloring($color) {
+        $ds: 5%;
+        $dk: 5%;
+
+        @return darken(desaturate($color, $ds), $dk);
+      }
+
+      @mixin cell-coloring($class, $color) {
+        @include cell-coloring-helper(".active", $class, $color);
+        @include cell-coloring-helper(".inactive", $class, cell-inactive-recoloring($color));
+      }
+
+      @include cell-coloring(".c-correct", $correct);
+      @include cell-coloring(".c-misplaced", $misplaced);
+      @include cell-coloring(".c-excluded", $excluded);
+
+      .game-cell.empty {
+        background-color: cell-inactive-recoloring($excluded);
+      }
+
+      &.inactive .game-cell {
+        cursor: not-allowed;
+      }
+
       .game-cell {
         width: $wh;
         height: $wh;
@@ -187,18 +223,6 @@ html, body {
         justify-content: center;
         align-items: center;
         text-transform: uppercase;
-
-        &.c-correct {
-          background-color: #538d4e;
-        }
-
-        &.c-misplaced {
-          background-color: #b59f3b;
-        }
-
-        &.c-excluded, &.empty {
-          background-color: #818384;
-        }
       }
 
       .entropy {
