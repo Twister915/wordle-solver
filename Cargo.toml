@@ -1,9 +1,3 @@
-[package.metadata.wasm-pack.profile.release]
-wasm-opt = ['-O4', '-g']
-
-[package.metadata.wasm-pack.profile.release.wasm-bindgen]
-demangle-name-section = false
-
 [package]
 name = "wordle-site"
 version = "0.1.0"
@@ -33,7 +27,7 @@ features = ["debug-embed"]
 test-case = "2.0"
 
 [profile.release]
-opt-level = 3
+opt-level = 's'
 lto = 'fat'
 codegen-units = 1
-panic = "abort"
+panic = 'abort'

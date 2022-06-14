@@ -1,0 +1,49 @@
+all panic=abort, lto=fat, codegen-units=1, on latest nightly 6/13/2022
+no performance comparison
+
+I had to customize trunk to support -Z flags in cargo
+data-cargo-zflags="build-std=core,alloc,std,panic_abort build-std-features=" (aka -Z build-std=core... -Z build-std-features=)
+
+--- data ---
+
+all numbers listed are size of the final wasm in bytes as reported by stat on my Mac, no compression or anything
+
+comparing build-std and not build-std, also comparing wasm opt levels
+
+[no build-std, opt-level=3, wasm-opt -O ]: 1 291 493
+[no build-std, opt-level=3, wasm-opt -O4]: 1 293 103
+[no build-std, opt-level=3, wasm-opt -Os]: 1 291 502
+[no build-std, opt-level=3, wasm-opt -Oz]: 1 291 488
+
+4 vs z is 0.1% difference, use 4
+
+[build-std, opt-level=3, wasm-opt -O ]:    1 293 295
+[build-std, opt-level=3, wasm-opt -O4]:    1 294 864
+[build-std, opt-level=3, wasm-opt -Os]:    1 293 295
+[build-std, opt-level=3, wasm-opt -Oz]:    1 293 277
+
+--- experiment 2
+
+comparing different rustc & wasm-opt opt levels
+
+[no build-std, opt-level=s, wasm-opt -O4]: 1 160 991
+[no build-std, opt-level=s, wasm-opt -Os]: 1 160 297
+[no build-std, opt-level=s, wasm-opt -Oz]: 1 160 247
+
+[no build-std, opt-level=z, wasm-opt -O4]: 1 135 541
+[no build-std, opt-level=z, wasm-opt -Os]: 1 134 077
+[no build-std, opt-level=z, wasm-opt -Oz]: 1 134 026
+
+---
+
+wasm opt scaled as expected
+
+compiling with opt-level=s vs opt-level=z is a 2.3% difference
+compiling with opt-level=3 vs opt-level=z is a 13.8% difference
+
+--- conclusions ---
+
+should use -O4 always with wasm-opt, savings on space is not a big deal <1%
+build-std is stupid and increases binary sizes ???
+opt-level could be s/z for smaller code, 13.8% difference in total size
+s/z should be picked based on which performs better, only 2.3% size difference
