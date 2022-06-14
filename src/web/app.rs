@@ -70,9 +70,12 @@ impl Component for App {
 
     fn view(&self, ctx: &Context<Self>) -> Html {
         html! {
-            <div class="body">
-                {self.show_content_html(ctx)}
-                {self.show_recommendation_html(ctx)}
+            <div class="viewport">
+                <div class="body">
+                    {self.show_game(ctx)}
+                    {self.show_recommendation_html(ctx)}
+                </div>
+                { Self::show_footer_safe() }
             </div>
         }
     }
@@ -84,36 +87,54 @@ impl App {
         self.recommendations.extend(self.solver.top_k_guesses::<{ N_RECOMMENDATIONS }>());
     }
 
-    fn show_content_html(&self, ctx: &Context<Self>) -> Html {
+    fn show_info_html() -> Html {
         html! {
-            <div class="content">
-                {Self::show_title_html()}
-                {self.show_game(ctx)}
-            </div>
-        }
-    }
+            <div class="info">
+                <h2>{"Instructions"}</h2>
+                <p class="instructions">
+                    {"To solve a wordle puzzle, you follow these simple steps:"}
+                    <ol class="steps">
+                        <li>{"Click on a Suggestion on the sidebar"}</li>
+                        <li>{"Guess the Suggestion in your Wordle game"}</li>
+                        <li>{"Input the colors that Wordle gave to your guess by clicking on the squares. Each click will change to the next color (grey, yellow, green)."}</li>
+                        <li>{"Hit the ✔️ button once the colors match those provided by Wordle"}</li>
+                    </ol>
+                    {"Suggestions will be updated after you make each guess, until the puzzle is solved."}
+                </p>
 
-    fn show_title_html() -> Html {
-        html! {
-            <div class="title">
-                <div class="hero">{"Joey's Wordle Bot"}</div>
-                <div class="detail">
-                    <div>
-                        <>{"Solves "}</>
-                        <a href="https://www.nytimes.com/games/wordle/index.html" target="_blank" class="click-text">{"Wordle"}</a>
-                        <>{" by recommending guesses & updating as you play!"}</>
-                    </div>
-                    <div>
-                        {"Click on a recommendation, then click on the boxes below to change their color, then hit OK when the colors match the game you're playing"}
-                    </div>
-                    <div>
-                        <>{"Math based on "}</>
-                        <a href="https://www.youtube.com/watch?v=v68zYyaEmEA" target="_blank" class="click-text">{"Grant Sanderson (3blue1brown)'s Video"}</a>
-                        <>{" about using "}</>
-                        <a href="https://en.wikipedia.org/wiki/Entropy_(information_theory)" target="_blank" class="click-text">{"Information Theory"}</a>
-                        <>{" to solve Wordle."}</>
-                    </div>
-                </div>
+                <h2>{"Methodology"}</h2>
+                <p>
+                    <>{"Math based on "}</>
+                    <a href="https://www.youtube.com/watch?v=v68zYyaEmEA" target="_blank" class="click-text">{"Grant Sanderson (3blue1brown)'s Video"}</a>
+                    <>{" about using "}</>
+                    <a
+                        href="https://en.wikipedia.org/wiki/Entropy_(information_theory)"
+                        target="_blank"
+                        class="click-text">
+                        {"Information Theory"}
+                    </a>
+                    <>{" to solve Wordle."}</>
+                </p>
+                <p>
+                    <>{"To suggest a "}</>
+                    <em>{"good guess"}</em>
+                    <>{" we basically calculate how much 'information' is gained, on average, for a given guess. \
+                    A guess will receive a 'coloring' and these colorings eliminate possible answers. \
+                    A 'high information' coloring is one where the coloring eliminates \
+                    the most candidate answers. Guesses which often produce high information colorings \
+                    are ranked highly, and suggested to the user."}</>
+                </p>
+                <p>
+                    <>{"The "}</>
+                    <em>{"expected information"}</em>
+                    <>{" is combined with data about the frequency of word use in English, so that we \
+                    suggest words that are likely to be the answer"}</>
+                </p>
+                <p>
+                    <>{"This summary is incomplete and oversimplified and it is highly recommended you watch the "}</>
+                    <a href="https://www.youtube.com/watch?v=v68zYyaEmEA" target="_blank" class="click-text">{"video"}</a>
+                    <>{" which visualizes the scoring computation quite well."}</>
+                </p>
             </div>
         }
     }
@@ -138,13 +159,7 @@ impl App {
     fn show_recommendation_details(&self) -> Html {
         html! {
             <div class="detail">
-                <div class="possibilities">
-                    {format!(
-                        "{}/{} possible words remaining...",
-                        self.solver.num_remaining_possibilities(),
-                        self.solver.num_total_possibilities(),
-                    )}
-                </div>
+                <div class="possibilities">{ self.possibilities_remaining_msg() }</div>
                 <div class="entropy">
                     {format!(
                         "Entropy is {:.02} bits",
@@ -153,6 +168,18 @@ impl App {
                 </div>
             </div>
         }
+    }
+
+    fn possibilities_remaining_msg(&self) -> String {
+        let remaining = self.solver.num_remaining_possibilities();
+        let total = self.solver.num_total_possibilities();
+        let count_str = if remaining == total {
+            total.to_string()
+        } else {
+            format!("{}/{}", remaining, total)
+        };
+
+        format!("{} possible words remaining...", count_str)
     }
 
     fn show_recommendation_instructions(ctx: &Context<Self>, top_guess: &'static str) -> Html {
@@ -196,8 +223,20 @@ impl App {
     fn show_game(&self, ctx: &Context<Self>) -> Html {
         let guesses: Vec<Guess> = self.solver.iter_guesses().collect();
         html! {
-            <div class="game">
-                {(0..NUM_TURNS).map(|idx| self.show_wordle_row(ctx, &guesses, idx)).collect::<Html>()}
+            <div class="game-ctr">
+                <h1 class="title">
+                    <img alt="[W]" src="static/favicon.png" class="logo" />
+                    {"Joey's Wordle Bot"}
+                </h1>
+                <p class="tagline">
+                    <>{"Solves "}</>
+                    <a href="https://www.nytimes.com/games/wordle/index.html" target="_blank" class="click-text">{"Wordle"}</a>
+                    <>{" by suggesting guesses & updating as you play!"}</>
+                </p>
+                <div class="game">
+                    {(0..NUM_TURNS).map(|idx| self.show_wordle_row(ctx, &guesses, idx)).collect::<Html>()}
+                </div>
+                {Self::show_info_html()}
             </div>
         }
     }
@@ -361,5 +400,30 @@ impl App {
 
     fn has_any_coloring_state(&self) -> bool {
         self.filled_colors.iter().any(|c| c != &Coloring::Excluded)
+    }
+
+    fn show_footer_safe() -> Html {
+        #[cfg(debug_assertions)]
+        html! {
+            <div class="footer debug">{"DEBUG RELEASE"}</div>
+        }
+
+        #[cfg(not(debug_assertions))]
+        Self::show_footer()
+    }
+
+    #[cfg(not(debug_assertions))]
+    fn show_footer() -> Html {
+        html! {
+            <div class="footer">
+                <>{format!("Joey's Wordle Bot -- v{} -- built with ", crate::GIT_VERSION)}</>
+                <a href="https://www.rust-lang.org/" target="_blank" class="click-text">{"Rust"}</a>
+                <>{" and "}</>
+                <a href="https://yew.rs/" target="_blank" class="click-text">{"Yew"}</a>
+                <>{". Available on "}</>
+                <span class="coming-soon">{"GitHub"}</span>
+                <>{" (coming soon!)."}</>
+            </div>
+        }
     }
 }

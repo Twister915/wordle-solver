@@ -5,4 +5,4 @@ rm -fr target/ dist/
 
 trunk build --release
 
-scp -r dist/* joey@mgk1.joey.sh:~/wordle-html/;
+scp -r dist/* joey@mgk1.joey.sh:~/wordle-qa-html/;

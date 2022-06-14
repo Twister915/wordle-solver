@@ -3,36 +3,26 @@ html, body {
   padding: 0;
 }
 
-.body {
-  display: flex;
-  height: 100%;
+.viewport {
   font-family: 'Courier New', monospace;
+  max-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
-.content {
-  margin-top: 10px;
-  margin-left: 10px;
+.body {
+  display: flex;
+  padding: 10px;
+  overflow: scroll;
+  flex-grow: 1;
 
-  .title {
-    div {
-      padding-bottom: 4px;
+  > div {
+    &:not(:first-child) {
+      margin-left: auto;
     }
-
-    .hero {
-      font-size: 24px;
-      font-weight: bold;
+    &:not(:last-child) {
+      margin-right: auto;
     }
-
-    .detail {
-      font-size: 12px;
-      color: dimgray;
-      max-width: 450px;
-      div {
-        margin-bottom: 10px;
-      }
-    }
-
-    margin-bottom: 10px;
   }
 }
 
@@ -40,14 +30,12 @@ html, body {
   margin-left: auto;
   display: flex;
   flex-direction: column;
-  padding: 20px 10px;
   width: 300px;
 
   .title {
     font-weight: bold;
     font-size: 22px;
     margin-bottom: 10px;
-    margin-top: 10px;
   }
 
   .detail, .instructions {
@@ -60,7 +48,7 @@ html, body {
   .list {
     display: flex;
     flex-direction: column;
-    overflow: auto;
+    overflow: scroll;
 
     .item {
       display: flex;
@@ -95,98 +83,134 @@ html, body {
   }
 }
 
-.game {
-  $wh: 50px;
-  .game-row {
-    display: flex;
-    margin-bottom: 3px;
+.game-ctr {
+  .title {
+    font-size: 28px;
+    font-weight: bold;
+    text-decoration: underline;
+    margin-bottom: 10px;
+    display: block;
+    color: black;
+    user-select: none;
 
-    &.active {
-      .game-cell {
-        cursor: pointer;
-      }
+    .logo {
+      display: inline-block;
+      padding-right: 5px;
+      $wh: 28px;
+      width: $wh;
+      height: $wh;
+      vertical-align: middle;
+    }
+  }
 
-      .buttons {
-        display: flex;
-        margin-left: 8px;
-        .button {
-          display: inline-flex;
-          justify-content: center;
-          align-items: center;
-          width: $wh;
-          height: $wh;
-          margin-right: 3px;
-          border-radius: 3px;
-          box-sizing: border-box;
-          font-size: 2rem;
-          font-weight: bold;
-          user-select: none;
-          transition: background-color 0.25s ease-in-out;
+  .info, .tagline {
+    font-size: 12px;
+    color: dimgray;
+    max-width: max(450px, 60vw);
 
-          &.enabled {
-            cursor: pointer;
+    p {
+      margin-bottom: 10px;
+    }
+  }
 
-            @mixin button-coloring($c) {
-              background-color: $c;
-              &:hover {
-                background-color: lighten($c, 20%);
+  .game {
+    margin-top: 20px;
+
+    $wh: 50px;
+
+    .game-row {
+      display: flex;
+      margin-bottom: 3px;
+
+      &.active {
+        .game-cell {
+          cursor: pointer;
+        }
+
+        .buttons {
+          display: flex;
+          margin-left: 8px;
+
+          .button {
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            width: $wh;
+            height: $wh;
+            margin-right: 3px;
+            border-radius: 3px;
+            box-sizing: border-box;
+            font-size: 2rem;
+            font-weight: bold;
+            user-select: none;
+            transition: background-color 0.25s ease-in-out;
+
+            &.enabled {
+              cursor: pointer;
+
+              @mixin button-coloring($c) {
+                background-color: $c;
+                &:hover {
+                  background-color: lighten($c, 20%);
+                }
+              }
+
+              &.reset-button {
+                @include button-coloring(#4a4a4a);
+              }
+
+              &.confirm-button {
+                @include button-coloring(#538d4e);
               }
             }
 
-            &.reset-button {
-              @include button-coloring(#4a4a4a);
+            &.disabled {
+              cursor: not-allowed;
+              background-color: #c6c6c6;
+              filter: grayscale(1);
             }
-
-            &.confirm-button {
-              @include button-coloring(#538d4e);
-            }
-          }
-
-          &.disabled {
-            cursor: not-allowed;
-            background-color: #c6c6c6;
-            filter: grayscale(1);
           }
         }
       }
-    }
 
-    .game-cell {
-      width: $wh;
-      height: $wh;
-      margin-right: 3px;
-      border-radius: 3px;
-      box-sizing: border-box;
-      font-size: 2rem;
-      color: white;
-      text-align: center;
-      user-select: none;
-      display: inline-flex;
-      justify-content: center;
-      align-items: center;
-      text-transform: uppercase;
+      .game-cell {
+        width: $wh;
+        height: $wh;
+        margin-right: 3px;
+        border-radius: 3px;
+        box-sizing: border-box;
+        font-size: 2rem;
+        color: white;
+        text-align: center;
+        user-select: none;
+        display: inline-flex;
+        justify-content: center;
+        align-items: center;
+        text-transform: uppercase;
 
-      &.c-correct {
-        background-color: #538d4e;
+        &.c-correct {
+          background-color: #538d4e;
+        }
+
+        &.c-misplaced {
+          background-color: #b59f3b;
+        }
+
+        &.c-excluded, &.empty {
+          background-color: #818384;
+        }
       }
 
-      &.c-misplaced {
-        background-color: #b59f3b;
+      .entropy {
+        align-items: center;
+        display: inline-flex;
+        font-size: 12px;
+        font-style: italic;
+        padding-left: 12px;
       }
-
-      &.c-excluded, &.empty {
-        background-color: #818384;
-      }
-    }
-
-    .entropy {
-      align-items: center;
-      display: inline-flex;
-      font-size: 12px;
-      font-style: italic;
-      padding-left: 12px;
     }
   }
+
 }
 
 .click-text {
@@ -201,4 +225,10 @@ html, body {
 
   cursor: pointer;
   font-weight: bold;
+}
+
+.footer {
+  font-size: 12px;
+  padding: 3px;
+  color: #818384;
 }
