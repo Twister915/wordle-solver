@@ -31,7 +31,7 @@ pub fn is_wordle_str(v: &str) -> bool {
 }
 
 pub fn is_wordle_str_bytes(v: &[u8]) -> bool {
-    v.len() == WORD_SIZE && v.iter().all(|v| is_normal_wordle_char(v))
+    v.len() == WORD_SIZE && v.iter().all(is_normal_wordle_char)
 }
 
 #[inline]

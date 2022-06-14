@@ -44,6 +44,13 @@ impl Guess {
 
         let excluded = self.determine_excluded_letters();
 
+        // we use idx to index other_bytes, self.word, and self.coloring simultaneously
+        // we know for certain (because this is wordle) that the arrays are all sized according to
+        // WORD_SIZE constant.
+        //
+        // Code generated from this implementation is actually an unrolled loop because the bounds
+        // are based on a constant, but using iterators with zip results in worse performance
+        #[allow(clippy::needless_range_loop)]
         for idx in 0..WORD_SIZE {
             let other_c = other_bytes[idx];
             let self_c = self.word[idx];
@@ -158,7 +165,7 @@ impl Default for Solver<'static> {
     fn default() -> Self {
         let possible_words = DATA.allowed_words.iter().map(|v| v.as_str()).collect();
         let frequency_data = &DATA.frequency_data;
-        let word_probabilities = compute_word_probabilities(&possible_words, &frequency_data).collect();
+        let word_probabilities = compute_word_probabilities(&possible_words, frequency_data).collect();
         let word_weights = compute_word_weights(&possible_words, &word_probabilities).collect();
         let remaining_possibilities = possible_words.clone();
         let default_state_guesses = DATA.default_state_data.as_ref().map(|dsd| compute_default_state_guesses(&possible_words, dsd).collect());
@@ -432,12 +439,12 @@ fn compute_word_weights<'a: 'b, 'b>(
 
 fn compute_default_state_guesses<'a: 'b, 'b>(
     words: &'b HashSet<&'a str>,
-    supplied_data: &'b Vec<DefaultStateEntry>,
+    supplied_data: &'b [DefaultStateEntry],
 ) -> impl Iterator<Item=ScoredCandidate<'a>> + 'b {
     supplied_data.iter().map(|entry| {
+
         let word = *words.iter()
-            .filter(|item| *item == &entry.word)
-            .next()
+            .find(|item| *item == &entry.word)
             .expect("default state data should contain possible words only");
 
         let score = Score {

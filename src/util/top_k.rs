@@ -7,7 +7,7 @@ pub struct TopK<E, const K: usize> {
 }
 
 impl<Element, const K: usize> TopK<Element, K> {
-    pub fn new<Itr, Score, ScoringFunc>(mut iter: Itr, f: ScoringFunc) -> Self
+    pub fn new<Itr, Score, ScoringFunc>(iter: Itr, f: ScoringFunc) -> Self
         where
             Itr: Iterator<Item=Element>,
             ScoringFunc: Fn(&Element) -> Score,
@@ -22,7 +22,7 @@ impl<Element, const K: usize> TopK<Element, K> {
         let mut size = 0;
 
         // exhaust the iterator (look at every item)
-        while let Some(next) = iter.next() {
+        for next in iter {
             // compute score
             let score = f(&next);
 
@@ -74,6 +74,7 @@ impl<Element, const K: usize> FusedIterator for TopK<Element, K> {}
 
 #[inline]
 fn array_insert<E, const N: usize>(elems: &mut[E; N], mut tmp: E, idx: usize) {
+    #[allow(clippy::needless_range_loop)]
     for i in idx..N {
         std::mem::swap(&mut tmp, &mut elems[i]);
     }

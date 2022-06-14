@@ -179,7 +179,7 @@ impl App {
     }
 
     fn show_recommendation_item(idx: usize, item: &ScoredCandidate<'static>, ctx: &Context<Self>) -> Html {
-        let word_cloned = item.word.clone();
+        let word_cloned = item.word;
         html! {
             <div class="item" onclick={ctx.link().callback(move |_| Msg::PickRecommendation(word_cloned.to_string()))}>
                 <div class="ordinal">{format!("#{:02}", idx + 1)}</div>
@@ -311,7 +311,7 @@ impl App {
             return false;
         };
 
-        let colorings = Colorings(self.filled_colors.clone());
+        let colorings = Colorings(self.filled_colors);
         if let Err(err) = self.solver.make_guess(&guess_str, colorings) {
             log::warn!("weird error when guessing {:?} {:?}", guess_str, err);
         }
@@ -326,8 +326,9 @@ impl App {
 
     fn guess_str(&self) -> Option<String> {
         let mut guess= [0; WORD_SIZE];
+        #[allow(clippy::needless_range_loop)]
         for i in 0..WORD_SIZE {
-            if let Some(c) = *&self.filled_guess[i] {
+            if let Some(c) = self.filled_guess[i] {
                 guess[i] = c as u8;
             } else {
                 return None;

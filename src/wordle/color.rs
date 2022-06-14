@@ -1,7 +1,7 @@
 use std::fmt::{Debug, Display, Formatter};
 use serde::{Serialize, Deserialize};
 use std::ops::{Index, IndexMut};
-use crate::wordle::color::Coloring::{Correct, Excluded, Misplaced};
+use self::Coloring::*;
 use super::prelude::*;
 
 pub type ColoringCode = u8;
@@ -12,6 +12,7 @@ pub enum Coloring {
     Misplaced,
     Correct,
 }
+
 
 impl Coloring {
     pub const ALL: [Coloring; 3] = [Excluded, Misplaced, Correct];
@@ -51,9 +52,9 @@ pub type ColoringsArray = [Coloring; WORD_SIZE];
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct Colorings(pub ColoringsArray);
 
-impl Into<Colorings> for ColoringsArray {
-    fn into(self) -> Colorings {
-        Colorings(self)
+impl From<ColoringsArray> for Colorings {
+    fn from(arr: ColoringsArray) -> Self {
+        Self(arr)
     }
 }
 
@@ -175,22 +176,22 @@ impl Iterator for IterAllColorings {
             let mut next = cur;
             for k in (0..WORD_SIZE).rev() {
                 match next[k] {
-                    Coloring::Excluded => {
-                        next[k] = Coloring::Misplaced;
+                    Excluded => {
+                        next[k] = Misplaced;
                         self.next = Some(next);
                         break;
                     }
-                    Coloring::Misplaced => {
-                        next[k] = Coloring::Correct;
+                    Misplaced => {
+                        next[k] = Correct;
                         self.next = Some(next);
                         break;
                     }
-                    Coloring::Correct => {
+                    Correct => {
                         if k == 0 {
                             self.next = None;
                             // implicitly this is break; because 0 is the end
                         } else {
-                            next[k] = Coloring::Misplaced;
+                            next[k] = Misplaced;
                         }
                     }
                 }

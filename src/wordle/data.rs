@@ -7,10 +7,10 @@ use thiserror::Error;
 use lazy_static::lazy_static;
 use crate::wordle::data::LoadDataErr::EncodingError;
 
-pub const DATA_DIRECTORY: &'static str = "data/";
-pub const FREQUENCY_FILE_NAME: &'static str = "5word_frequencies.txt";
-pub const ALLOWED_WORDS_FILE_NAME: &'static str = "allowed_words.txt";
-pub const DEFAULT_STATE_DATA_FILE_NAME: &'static str = "default_state_data.txt";
+pub const DATA_DIRECTORY: &str = "data/";
+pub const FREQUENCY_FILE_NAME: &str = "5word_frequencies.txt";
+pub const ALLOWED_WORDS_FILE_NAME: &str = "allowed_words.txt";
+pub const DEFAULT_STATE_DATA_FILE_NAME: &str = "default_state_data.txt";
 pub const N_RECOMMENDATIONS: usize = 32;
 
 lazy_static! {
@@ -96,7 +96,7 @@ fn try_read_frequency_data() -> Result<FrequencyData, LoadDataErr> {
     let mut pos = 0;
 
     for line in file_data.lines() {
-        if let Some((l, r)) = line.split_once(" ") {
+        if let Some((l, r)) = line.split_once(' ') {
             let word = normalize_wordle_word(l);
             if is_wordle_str(&word) {
                 let frequency = r.trim()
@@ -131,7 +131,7 @@ fn try_read_allowed_words() -> Result<Vec<String>, LoadDataErr> {
     Ok(retrieve_file_as_str(ALLOWED_WORDS_FILE_NAME)?
         .ok_or(LoadDataErr::MissingAllowedWordsFile)?
         .lines()
-        .map(|line| normalize_wordle_word(line))
+        .map(normalize_wordle_word)
         .filter(|line| is_wordle_str(line))
         .collect())
 }
@@ -144,7 +144,7 @@ fn try_read_default_state_data() -> Result<Option<Vec<DefaultStateEntry>>, LoadD
     let mut out = Vec::with_capacity(N_RECOMMENDATIONS);
     for line in raw_data.lines()
     {
-        let mut parts = line.splitn(4, " ");
+        let mut parts = line.splitn(4, ' ');
         let word = if let Some(w) = parts.next() {
             w.to_string()
         } else {
@@ -180,5 +180,5 @@ fn retrieve_file_as_str(name: &str) -> Result<Option<String>, LoadDataErr> {
         return Ok(None);
     };
 
-    Ok(Some(std::str::from_utf8(&f.data).map_err(|err| EncodingError(err))?.to_string()))
+    Ok(Some(std::str::from_utf8(&f.data).map_err(EncodingError)?.to_string()))
 }
