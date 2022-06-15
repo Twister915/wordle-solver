@@ -1,7 +1,6 @@
 use yew::prelude::*;
 use std::borrow::Borrow;
-use crate::util::{KeyEvent, KeyListener};
-use crate::web::app::Msg::OnKeyDown;
+use super::global_key_hook::*;
 use crate::wordle::{Coloring, Colorings, Guess, is_wordle_str, N_RECOMMENDATIONS, NUM_TURNS, ScoredCandidate, Solver, WORD_SIZE};
 
 pub struct App {
@@ -33,7 +32,7 @@ impl Component for App {
             recommendations: Vec::default(),
             filled_guess: [None; WORD_SIZE],
             filled_colors: [Coloring::Excluded; WORD_SIZE],
-            keydown_listener: KeyListener::create(ctx.link().callback(OnKeyDown)).expect("should be able to attach key listener"),
+            keydown_listener: KeyListener::create(ctx.link().callback(Msg::OnKeyDown)).expect("should be able to attach key listener"),
         };
         out.update_recommendations();
         out
