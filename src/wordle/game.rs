@@ -2,7 +2,6 @@ use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 use thiserror::Error;
 use super::{prelude::*, color::*, data::*};
-use serde::{Serialize, Deserialize};
 
 pub struct Solver<'a> {
     possible_words: HashSet<&'a str>,
@@ -181,7 +180,7 @@ impl Default for Solver<'static> {
     }
 }
 
-#[derive(Error, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Error, Debug, Clone, PartialEq, Eq)]
 pub enum SolverErr {
     #[error("no possible words remain")]
     NoCandidates,

@@ -12,7 +12,6 @@ wee_alloc = "0.4"
 wasm-bindgen = "0.2"
 thiserror = "1.0"
 lazy_static = "1.4"
-serde = "1"
 console_error_panic_hook = "0.1.7"
 
 [dependencies.instant]

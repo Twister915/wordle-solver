@@ -1,12 +1,11 @@
 use std::fmt::{Debug, Display, Formatter};
-use serde::{Serialize, Deserialize};
 use std::ops::{Index, IndexMut};
 use self::Coloring::*;
 use super::prelude::*;
 
 pub type ColoringCode = u8;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Coloring {
     Excluded,
     Misplaced,
