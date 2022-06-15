@@ -6,6 +6,7 @@ html, body {
 .viewport {
   font-family: 'Courier New', monospace;
   max-height: 100vh;
+  height: 100vh;
   display: flex;
   flex-direction: column;
 }
@@ -13,7 +14,7 @@ html, body {
 .body {
   display: flex;
   padding: 10px;
-  overflow: scroll;
+  overflow: auto;
   flex-grow: 1;
 
   > div {
