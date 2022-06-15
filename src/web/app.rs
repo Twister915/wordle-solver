@@ -1,5 +1,7 @@
 use yew::prelude::*;
 use std::borrow::Borrow;
+use crate::util::{KeyEvent, KeyListener};
+use crate::web::app::Msg::OnKeyDown;
 use crate::wordle::{Coloring, Colorings, Guess, is_wordle_str, N_RECOMMENDATIONS, NUM_TURNS, ScoredCandidate, Solver, WORD_SIZE};
 
 pub struct App {
@@ -7,6 +9,9 @@ pub struct App {
     recommendations: Vec<ScoredCandidate<'static>>,
     filled_guess: [Option<char>; WORD_SIZE],
     filled_colors: [Coloring; WORD_SIZE],
+
+    #[allow(dead_code)]
+    keydown_listener: KeyListener,
 }
 
 #[derive(Debug)]
@@ -15,18 +20,20 @@ pub enum Msg {
     UpdateColoring(usize),
     MakeGuess,
     ClearGuess,
+    OnKeyDown(KeyEvent)
 }
 
 impl Component for App {
     type Message = Msg;
     type Properties = ();
 
-    fn create(_: &Context<Self>) -> Self {
+    fn create(ctx: &Context<Self>) -> Self {
         let mut out = Self {
             solver: Solver::default(),
             recommendations: Vec::default(),
             filled_guess: [None; WORD_SIZE],
             filled_colors: [Coloring::Excluded; WORD_SIZE],
+            keydown_listener: KeyListener::create(ctx.link().callback(OnKeyDown)).expect("should be able to attach key listener"),
         };
         out.update_recommendations();
         out
@@ -65,6 +72,7 @@ impl Component for App {
                     false
                 }
             }
+            OnKeyDown(mut event) => self.handle_keydown(&mut event),
         }
     }
 
@@ -94,7 +102,7 @@ impl App {
                 <p class="instructions">
                     {"To solve a wordle puzzle, you follow these simple steps:"}
                     <ol class="steps">
-                        <li>{"Click on a Suggestion on the sidebar"}</li>
+                        <li>{"Click on a Suggestion on the sidebar (or type a word)"}</li>
                         <li>{"Guess the Suggestion in your Wordle game"}</li>
                         <li>{"Input the colors that Wordle gave to your guess by clicking on the squares. Each click will change to the next color (grey, yellow, green)."}</li>
                         <li>{"Hit the ✔️ button once the colors match those provided by Wordle"}</li>
@@ -425,5 +433,45 @@ impl App {
                 <>{" (coming soon!)."}</>
             </div>
         }
+    }
+
+    fn handle_keydown(&mut self, event: &mut KeyEvent) -> bool {
+        let code = event.code();
+        if code == "Backspace" {
+            return self.handle_backspace(event);
+        } else {
+            // all letter keys are of the form "KeyA" or "KeyB" etc
+            if code.starts_with("Key") && code.len() == 4 {
+                let l = code.as_bytes()[3] as char;
+                if l >= 'A' && l <= 'Z' {
+                   return  self.handle_letter_entered(event, l.to_ascii_lowercase());
+                }
+            }
+        }
+
+        false
+    }
+
+    fn handle_letter_entered(&mut self, event: &mut KeyEvent, letter: char) -> bool {
+        match self.next_chr_idx() {
+            None => false,
+            Some(idx) => {
+                self.filled_guess[idx] = Some(letter);
+                event.prevent_default();
+                true
+            }
+        }
+    }
+
+    fn handle_backspace(&mut self, event: &mut KeyEvent) -> bool {
+        let idx_clear = match self.next_chr_idx() {
+            Some(0) => return false,
+            None => self.filled_guess.len(),
+            Some(x) => x,
+        } - 1;
+
+        self.filled_guess[idx_clear] = None;
+        event.prevent_default();
+        true
     }
 }

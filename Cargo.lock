@@ -635,6 +635,7 @@ dependencies = [
  "thiserror",
  "wasm-bindgen",
  "wasm-logger",
+ "web-sys",
  "wee_alloc",
  "yew",
 ]
