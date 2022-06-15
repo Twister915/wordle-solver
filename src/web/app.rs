@@ -436,25 +436,33 @@ impl App {
     }
 
     fn handle_keydown(&mut self, event: &mut KeyEvent) -> bool {
-        let code = event.code();
-        if code == "Backspace" {
-            return self.handle_backspace(event);
-        } else {
-            // all letter keys are of the form "KeyA" or "KeyB" etc
-            if code.starts_with("Key") && code.len() == 4 {
-                let l = code.as_bytes()[3] as char;
-                if l >= 'A' && l <= 'Z' {
-                   return  self.handle_letter_entered(event, l.to_ascii_lowercase());
-                }
-            }
+        if event.is_control_key() {
+            return false;
         }
 
-        false
+        match event.code() {
+            "Backspace" => self.handle_backspace(event),
+            "Enter" => self.handle_enter(event),
+
+            // all letter keys are of the form "KeyA" or "KeyB" etc
+            code if code.starts_with("Key") && code.len() == 4 => {
+                let l = code.as_bytes()[3] as char;
+                if l >= 'A' && l <= 'Z' {
+                    self.handle_letter_entered(event, l.to_ascii_lowercase())
+                } else {
+                    false
+                }
+            },
+            _ => false,
+        }
     }
 
     fn handle_letter_entered(&mut self, event: &mut KeyEvent, letter: char) -> bool {
+        // next_chr_idx = where the next character should go
         match self.next_chr_idx() {
+            // None means that the word is completely filled & we have nowhere to put the character
             None => false,
+
             Some(idx) => {
                 self.filled_guess[idx] = Some(letter);
                 event.prevent_default();
@@ -464,14 +472,31 @@ impl App {
     }
 
     fn handle_backspace(&mut self, event: &mut KeyEvent) -> bool {
+        // figure out what index to clear...
+        // next_chr_idx is the index where a new character would go
         let idx_clear = match self.next_chr_idx() {
+            // if the next character goes at the start, then that means there's no characters
+            // entered, and we should do nothing
             Some(0) => return false,
+
+            Some(idx) => idx,
+
+            // if next_char_idx returns None that means the guess is filled (all 5 chars are entered)
+            // and we need to clear the last character
             None => self.filled_guess.len(),
-            Some(x) => x,
-        } - 1;
+        } - 1; // we subtract 1 from the next_chr_idx because this index is *after* the last character
 
         self.filled_guess[idx_clear] = None;
         event.prevent_default();
         true
+    }
+
+    fn handle_enter(&mut self, event: &mut KeyEvent) -> bool {
+        if self.make_guess() {
+            event.prevent_default();
+            true
+        } else {
+            false
+        }
     }
 }

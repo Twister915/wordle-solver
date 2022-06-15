@@ -3,14 +3,14 @@ use wasm_bindgen::prelude::*;
 use yew::prelude::*;
 use std::fmt;
 
-pub struct KeyListener {
-    callback: Closure<dyn FnMut(KeyboardEvent)>,
-}
-
 pub struct KeyEvent {
     event: Box<KeyboardEvent>,
     code: String,
     prevented: bool,
+}
+
+pub struct KeyListener {
+    callback: Closure<dyn FnMut(KeyboardEvent)>,
 }
 
 impl KeyListener {
