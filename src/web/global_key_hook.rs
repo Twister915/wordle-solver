@@ -42,7 +42,6 @@ impl Drop for KeyListener {
             let cb_ref = self.callback.as_ref().unchecked_ref();
             if let Ok(()) = window.remove_event_listener_with_callback("keydown", cb_ref) {
                 log::debug!("de-registered keydown callback");
-                return;
             }
         }
     }

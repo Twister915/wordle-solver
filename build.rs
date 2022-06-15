@@ -19,7 +19,7 @@ fn handle_cmd_git_output(input: io::Result<process::Output>) -> String {
             // check exit status from git, should be 0
             let is_exit_code_ok = output.status.success();
             if !is_exit_code_ok {
-                warning(format_args!("got non-0 exit code... {}", output.status.to_string()));
+                warning(format_args!("got non-0 exit code... {}", output.status));
             }
 
             // try to read stderr...

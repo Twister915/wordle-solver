@@ -446,7 +446,7 @@ impl App {
             // all letter keys are of the form "KeyA" or "KeyB" etc
             code if code.starts_with("Key") && code.len() == 4 => {
                 let l = code.as_bytes()[3] as char;
-                if l >= 'A' && l <= 'Z' {
+                if ('A'..='Z').contains(&l) {
                     self.handle_letter_entered(event, l.to_ascii_lowercase())
                 } else {
                     false
