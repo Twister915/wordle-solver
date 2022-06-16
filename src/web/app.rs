@@ -1,10 +1,10 @@
 use yew::prelude::*;
 use std::borrow::Borrow;
 use super::global_key_hook::*;
-use crate::wordle::{Coloring, Colorings, Guess, is_wordle_str, N_RECOMMENDATIONS, NUM_TURNS, ScoredCandidate, Solver, WORD_SIZE};
+use crate::wordle::*;
 
 pub struct App {
-    solver: Solver<'static>,
+    solver: StaticSolver,
     recommendations: Vec<ScoredCandidate<'static>>,
     filled_guess: [Option<char>; WORD_SIZE],
     filled_colors: [Coloring; WORD_SIZE],

@@ -3,6 +3,27 @@ use std::collections::{HashMap, HashSet};
 use thiserror::Error;
 use super::{prelude::*, color::*, data::*};
 
+///
+/// The default kind of Solver is a Solver<'static> because the strings being referenced are from
+/// constants embedded in the binary.
+///
+/// You will almost never need to use a different lifetime on a Solver.
+///
+/// It remains possible to use a lifetime argument for supporting future use-cases (testing?).
+///
+pub type StaticSolver = Solver<'static>;
+
+///
+/// Performs the core task of this app- solving wordle!
+///
+/// You can initialize this using the Default implementation.
+///
+/// This struct likes to hold &str items, because it reuses the same strings over and over in
+/// multiple fields. The struct itself cannot really own the String objects without lots of
+/// duplicated allocations. Therefore, it expects whoever owns Solver to handle allocating the
+/// Strings to acquire &str refs. Often, these &str refs are &'static str, but we also don't want
+/// to constrain users of Solver to only using &'static str, so we make this lifetime argument 'a.
+///
 pub struct Solver<'a> {
     /// an unchanging set of all words which you're allowed to guess
     possible_words: HashSet<&'a str>,
