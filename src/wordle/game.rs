@@ -12,8 +12,8 @@ pub struct Solver<'a> {
     word_weights: HashMap<&'a str, WordleFloat>,
 
     /// it is extremely expensive to compute the scores in the "default state" (when no guesses have
-    /// been made) because the algorithm scales with the square of the possibilities remaining, making
-    /// the very first computation the most expensive.
+    /// been made) because the algorithm scales with the square of the possibilities remaining,
+    /// making the very first computation the most expensive.
     ///
     /// Therefore we support a "cached" version of this calculation
     ///
@@ -25,8 +25,8 @@ pub struct Solver<'a> {
     /// of the text file.
     default_state_guesses: Option<Vec<ScoredCandidate<'a>>>,
 
-    /// The guesses that the user has made thus far. It is Option because we start off with None, and
-    /// change to Some when a guess is made.
+    /// The guesses that the user has made thus far. It is Option because we start off with None,
+    /// and change to Some when a guess is made.
     guesses: [Option<Guess>; NUM_TURNS],
 
     /// The subset of possible_words which remain. Possibilities are eliminated as guesses are made,
@@ -52,9 +52,9 @@ impl Guess {
         self.coloring.0.iter().all(|v| v == &Coloring::Correct)
     }
 
-    /// Tests if this guess "allows" a different guess. For example: if this guess has a Correct coloring
-    /// at position 0 for the letter 'q' but the other uses 'a' in position 0 then that guess is not
-    /// allowed.
+    /// Tests if this guess "allows" a different guess. For example: if this guess has a Correct
+    /// coloring at position 0 for the letter 'q' but the other uses 'a' in position 0 then that
+    /// guess is not allowed.
     pub fn allows_other_guess(&self, other: &str) -> bool {
         debug_assert!(is_wordle_str(other));
 
@@ -95,8 +95,8 @@ impl Guess {
                 return false;
             }
 
-            // if we have a letter marked misplaced, but the "other" uses the same letter in the same
-            // position, we know the other answer is impossible
+            // if we have a letter marked misplaced, but the "other" uses the same letter in the
+            // same position, we know the other answer is impossible
             if coloring == Coloring::Misplaced && matches {
                 return false;
             }
@@ -106,19 +106,18 @@ impl Guess {
             // We keep a count of the "budget" for all letters either misplaced/correct.
             //
             // When we encounter a letter that is not obviously incorrect (based on the above rules)
-            // we will check if we have "budget" for this letter before checking if it's expliclty
-            // excluded.
+            // we will check if we have "budget" for this letter before checking if it's excluded.
             //
             // This is because letters that are repeated, where at least one instance is marked as
             // excluded, will be marked as completely excluded.
             //
-            // Checking the budget before checking whether it's excluded allows us to correctly handle
-            // repeated letters, such as this case:
+            // Checking the budget before checking whether it's excluded allows us to correctly
+            // handle repeated letters, such as this case:
             //    word=abbey, coloring=[CORRECT, CORRECT, EXCLUDED, EXCLUDED, EXCLUDED]
-            // then the letter 'b' would be marked as excluded. If the guess we're testing was "abhor"
-            // then "b" would be marked as excluded despite being CORRECT. Because we know the "budget"
-            // of "b" is 1, we check that first, decrement it, and then because no further "b" is in
-            // "abhor" the entire function should (correctly) return true
+            // then the letter 'b' would be marked as excluded. If the guess we're testing was
+            // "abhor" then 'b' would be marked as excluded despite being CORRECT. Because we know
+            // the "budget" of "b" is 1, we check that first, decrement it, and then because no
+            // further "b" is in "abhor" the entire function should (correctly) return true
             let other_letter_idx = letter_idx(other_c);
             let counter = &mut unused_letter_counts[other_letter_idx];
             if *counter > 0 {
@@ -139,8 +138,8 @@ impl Guess {
     /// Outputs true/false flags for each letter in the alphabet, where true indicates that the
     /// letter has been flagged as "excluded" at least once.
     ///
-    /// "excluded" might be true for a given letter & it still appears in the word, due to repetition
-    /// of letters.
+    /// "excluded" might be true for a given letter & it still appears in the word, due to
+    /// repetition of letters.
     ///
     fn determine_excluded_letters(&self) -> [bool; ALPHABET_SIZE] {
         let mut out = [false; ALPHABET_SIZE];
@@ -209,8 +208,12 @@ impl Default for Solver<'static> {
             .collect();
 
         let frequency_data = &DATA.frequency_data;
-        let word_weights = compute_word_weights(&possible_words, frequency_data).collect();
-        let word_probabilities = compute_word_probabilities(&possible_words, &word_weights).collect();
+        let word_weights =
+            compute_word_weights(&possible_words, frequency_data)
+                .collect();
+        let word_probabilities =
+            compute_word_probabilities(&possible_words, &word_weights)
+                .collect();
         let remaining_possibilities = possible_words.clone();
         let default_state_guesses = DATA.default_state_data
             .as_ref()
@@ -273,7 +276,7 @@ impl<'a> Solver<'a> {
         let mut word = [0u8; WORD_SIZE];
         word.copy_from_slice(guess.as_bytes());
 
-        // track how much entropy remains in the puzzle so we can calculate the delta after making the guess
+        // track entropy in the puzzle, so we can calculate the delta after making the guess
         let start_entropy = self.remaining_entropy();
 
         // store the guess in the guesses array
@@ -325,7 +328,10 @@ impl<'a> Solver<'a> {
 
         debug_assert!(
             self.word_probabilities.is_empty() ||
-                (self.word_probabilities.values().copied().sum::<WordleFloat>() - 1.0).abs() < 0.000001,
+                (self.word_probabilities
+                    .values()
+                    .copied()
+                    .sum::<WordleFloat>() - 1.0).abs() < 0.000001,
             "weights must add up to exactly 1.0",
         );
     }
@@ -353,7 +359,10 @@ impl<'a> Solver<'a> {
     ///
     pub fn is_solved(&self) -> bool {
         let n_guesses = self.num_guesses();
-        n_guesses > 0 && self.guesses[n_guesses - 1].map(|v| v.is_correct()).unwrap_or(false)
+        n_guesses > 0 &&
+            self.guesses[n_guesses - 1]
+                .map(|v| v.is_correct())
+                .unwrap_or(false)
     }
 
     ///
@@ -524,21 +533,22 @@ impl<'a> Solver<'a> {
     /// if it does then we gain a tremendous amount of information. The information gained and the
     /// probability of seeing a coloring are "two sides of the same coin."
     ///
-    /// The probability of seeing a coloring is calculated first, then the info gained by that coloring
-    /// is log2 of that probability. For example, if the probability of a coloring is 0.5, that means
-    /// half the search space produces that coloring (and the other half is eliminated) giving us
-    /// log2(0.5) = 2 bits of information with a 0.5 probability.
+    /// The probability of seeing a coloring is calculated first, then the info gained by that
+    /// coloring is log2 of that probability. For example, if the probability of a coloring is 0.5,
+    /// that means half the search space produces that coloring (and the other half is eliminated)
+    /// giving us log2(0.5) = 2 bits of information with a 0.5 probability.
     ///
     /// The "expected info" is therefore the sum of p * p.log2() for all colorings.
     ///
     fn expected_guess_info(&self, guess: &'a str) -> WordleFloat {
         // This array holds a float  for each coloring which tracks the probability of it occurring.
-        let mut probabilities: [WordleFloat; Colorings::NUM_STATES] = [0.0 as WordleFloat; Colorings::NUM_STATES];
+        let mut probabilities = [0.0 as WordleFloat; Colorings::NUM_STATES];
 
         // go through all possible answers that remain
         for possible_answer in &self.remaining_possibilities {
-            // figure out how probable this answer actually is. This is based on english word frequency
-            // data, and the sum of freq_weight_for applies across all possibles should be 1.0
+            // Figure out how probable this answer actually is...
+            // This is based on english word frequency data, and the sum of freq_weight_for applied
+            // across all possibilities should be 1.0
             let weight = self.word_probability_for(possible_answer);
 
             // determine what coloring we'd get if we used guess & assumed answer=possible_answer
@@ -570,7 +580,7 @@ impl<'a> Solver<'a> {
     /// The word must be in remaining_possibilities (and therefore word_probabilities) or no
     /// probability will be found.
     ///
-    /// In a perfect world this would return an Option, but instead panics if no probability is found
+    /// In a perfect world this would return an Option... but panics if no probability is found
     ///
     fn word_probability_for(&self, guess: &'a str) -> WordleFloat {
         self.word_probabilities[guess]
@@ -605,8 +615,10 @@ impl<'a> Solver<'a> {
 /// & mutably, which is an error.
 ///
 /// Therefore, we allow borrowing of the field &self.guesses (and passing that to this function)
-/// instead, which is not an error. Think of it as constraining the scope of the immutable borrow to
-/// a single field, instead of borrowing the entire Solver struct to determine if the guess is allowed.
+/// instead, which is not an error.
+///
+/// Think of it as constraining the scope of the immutable borrow to a single field, instead of
+/// borrowing the entire Solver struct to determine if the guess is allowed.
 ///
 fn is_guess_allowed_by_existing_guesses(guesses: &[Option<Guess>], guess: &str) -> bool {
     iter_guesses(guesses).all(|g| g.allows_other_guess(guess))
@@ -648,13 +660,13 @@ fn iter_guesses(guesses: &[Option<Guess>]) -> impl Iterator<Item=&Guess> {
 /// The "x" value is then passed into sigmoid so that it exists between (0.0, 1.0) for all words,
 /// and this is the "weight"
 ///
-/// Finally, we use MIN_WORD_WEIGHT when no frequency data exists for a given word, or when the computed
-/// weight is below MIN_WORD_WEIGHT. When a word does not have frequency data, it is a fair assumption
-/// that it is extremely uncommon.
+/// Finally, we use MIN_WORD_WEIGHT when no frequency data exists for a given word, or when the
+/// computed weight is below MIN_WORD_WEIGHT. When a word does not have frequency data, it is a
+/// fair assumption that it is extremely uncommon.
 ///
-/// The constants N_COMMON and WIDTH can be tuned to possibly yield better results. Their values depend
-/// on the size of the allowed_words and frequency data file. If you use a different dataset for word
-/// frequency it is recommended to experiment and tune these constants to this new dataset.
+/// The constants N_COMMON and WIDTH can be tuned to possibly yield better results. Their values
+/// depend on the size of the allowed_words and frequency data file. If you use a different dataset
+/// for word frequency it is recommended to experiment and tune these constants to this new dataset.
 ///
 fn compute_word_weights<'a: 'b, 'b>(
     possible_guesses: &'b HashSet<&'a str>,
