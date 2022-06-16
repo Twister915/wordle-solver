@@ -233,7 +233,7 @@ impl App {
             <div class="game-ctr">
                 <h1 class="title">
                     <img alt="[W]" src="static/favicon.png" class="logo" />
-                    {"Joey's Wordle Bot"}
+                    {"Joey's Wordle Solver"}
                 </h1>
                 <p class="tagline">
                     <>{"Solves "}</>
@@ -423,7 +423,7 @@ impl App {
     fn show_footer() -> Html {
         html! {
             <div class="footer">
-                <>{format!("Joey's Wordle Bot -- v{} -- built with ", crate::GIT_VERSION)}</>
+                <>{format!("Joey's Wordle Solver -- v{} -- built with ", crate::GIT_VERSION)}</>
                 <a href="https://www.rust-lang.org/" target="_blank" class="click-text">{"Rust"}</a>
                 <>{" and "}</>
                 <a href="https://yew.rs/" target="_blank" class="click-text">{"Yew"}</a>
