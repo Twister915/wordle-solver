@@ -616,7 +616,7 @@ fn is_guess_allowed_by_existing_guesses(guesses: &[Option<Guess>], guess: &str) 
 /// Helper which takes any slice of Option<Guess> and iterates through references to the Guesses
 /// that have been made.
 ///
-fn iter_guesses<'b>(guesses: &'b[Option<Guess>]) -> impl Iterator<Item=&'b Guess> + 'b {
+fn iter_guesses(guesses: &[Option<Guess>]) -> impl Iterator<Item=&Guess> {
     guesses
         .iter()
         // convert &Option<Guess> to &Guess (two steps in one).
