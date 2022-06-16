@@ -3,6 +3,7 @@ name = "wordle-site"
 version = "0.1.0"
 edition = "2021"
 authors = ["Joey Sacchini <joey@sacchini.net>"]
+license = "MIT"
 
 [dependencies]
 yew = "0.19"
