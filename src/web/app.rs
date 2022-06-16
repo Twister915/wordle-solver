@@ -228,7 +228,7 @@ impl App {
     }
 
     fn show_game(&self, ctx: &Context<Self>) -> Html {
-        let guesses: Vec<Guess> = self.solver.iter_guesses().collect();
+        let guesses: Vec<&Guess> = self.solver.iter_guesses().collect();
         html! {
             <div class="game-ctr">
                 <h1 class="title">
@@ -248,7 +248,7 @@ impl App {
         }
     }
 
-    fn show_wordle_row(&self, ctx: &Context<Self>, guesses: &Vec<Guess>, idx: usize) -> Html {
+    fn show_wordle_row(&self, ctx: &Context<Self>, guesses: &[&Guess], idx: usize) -> Html {
         if let Some(guess) = guesses.get(idx) {
             self.show_wordle_guessed_row(guess)
         } else if idx == guesses.len() && self.solver.can_guess() {
@@ -395,7 +395,7 @@ impl App {
 
     fn enable_confirm_button(&self) -> bool {
         if let Some(g) = self.guess_str() {
-            self.solver.can_use_guess(g.borrow())
+            self.solver.is_guess_permitted(g.borrow())
         } else {
             false
         }

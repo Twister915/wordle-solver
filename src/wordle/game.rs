@@ -4,13 +4,38 @@ use thiserror::Error;
 use super::{prelude::*, color::*, data::*};
 
 pub struct Solver<'a> {
+    /// an unchanging set of all words which you're allowed to guess
     possible_words: HashSet<&'a str>,
-    word_probabilities: HashMap<&'a str, WordleFloat>,
+
+    /// "weight" of seeing a given word. The values in this map do not sum to 1.0 and aren't
+    /// probabilities, but instead indicate the relative frequency of various possible_words
+    word_weights: HashMap<&'a str, WordleFloat>,
+
+    /// it is extremely expensive to compute the scores in the "default state" (when no guesses have
+    /// been made) because the algorithm scales with the square of the possibilities remaining, making
+    /// the very first computation the most expensive.
+    ///
+    /// Therefore we support a "cached" version of this calculation
+    ///
+    /// At compile time (thanks to the trunk pre-build hook & the code in gen_default_state_data)
+    /// we generate a text file which contains some top N scores and put that data into this field
+    /// at runtime.
+    ///
+    /// It is an Option because we need to not load the data from a text file during the generation
+    /// of the text file.
     default_state_guesses: Option<Vec<ScoredCandidate<'a>>>,
 
+    /// The guesses that the user has made thus far. It is Option because we start off with None, and
+    /// change to Some when a guess is made.
     guesses: [Option<Guess>; NUM_TURNS],
+
+    /// The subset of possible_words which remain. Possibilities are eliminated as guesses are made,
+    /// so this subset is updated upon each guess & gets smaller as the game goes on.
     remaining_possibilities: HashSet<&'a str>,
-    word_weights: HashMap<&'a str, WordleFloat>,
+
+    /// word_weights, but the keys are the values in "remaining_possibilities" and the values
+    /// are normalized such that they sum to 1.0.
+    word_probabilities: HashMap<&'a str, WordleFloat>,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -22,18 +47,24 @@ pub struct Guess {
 }
 
 impl Guess {
+    /// Whether or not the coloring indicates that this guess is the correct answer
     pub fn is_correct(&self) -> bool {
         self.coloring.0.iter().all(|v| v == &Coloring::Correct)
     }
 
+    /// Tests if this guess "allows" a different guess. For example: if this guess has a Correct coloring
+    /// at position 0 for the letter 'q' but the other uses 'a' in position 0 then that guess is not
+    /// allowed.
     pub fn allows_other_guess(&self, other: &str) -> bool {
         debug_assert!(is_wordle_str(other));
 
+        // You shouldn't make the same guess twice! Technically you could but then this bot wouldn't
+        // seem very smart lol
         if self.is_guess_same(other) {
             return false;
         }
 
-        let other_bytes = other.as_bytes();
+        // count up how many of each letter we expect to see based on our own coloring
         let mut unused_letter_counts = [0; ALPHABET_SIZE];
         for idx in 0..WORD_SIZE {
             if self.coloring[idx] != Coloring::Excluded {
@@ -41,7 +72,9 @@ impl Guess {
             }
         }
 
+        // determine the letters which we know are excluded
         let excluded = self.determine_excluded_letters();
+        let other_bytes = other.as_bytes();
 
         // we use idx to index other_bytes, self.word, and self.coloring simultaneously
         // we know for certain (because this is wordle) that the arrays are all sized according to
@@ -102,6 +135,13 @@ impl Guess {
         unused_letter_counts.iter().all(|count| count == &0)
     }
 
+    ///
+    /// Outputs true/false flags for each letter in the alphabet, where true indicates that the
+    /// letter has been flagged as "excluded" at least once.
+    ///
+    /// "excluded" might be true for a given letter & it still appears in the word, due to repetition
+    /// of letters.
+    ///
     fn determine_excluded_letters(&self) -> [bool; ALPHABET_SIZE] {
         let mut out = [false; ALPHABET_SIZE];
         for idx in 0..WORD_SIZE {
@@ -160,22 +200,32 @@ impl Score {
     }
 }
 
+/// Implementation of Default uses the embedded data to construct a solver
 impl Default for Solver<'static> {
     fn default() -> Self {
-        let possible_words = DATA.allowed_words.iter().map(|v| v.as_str()).collect();
+        let possible_words = DATA.allowed_words
+            .iter()
+            .map(|v| v.as_str())
+            .collect();
+
         let frequency_data = &DATA.frequency_data;
-        let word_probabilities = compute_word_probabilities(&possible_words, frequency_data).collect();
-        let word_weights = compute_word_weights(&possible_words, &word_probabilities).collect();
+        let word_weights = compute_word_weights(&possible_words, frequency_data).collect();
+        let word_probabilities = compute_word_probabilities(&possible_words, &word_weights).collect();
         let remaining_possibilities = possible_words.clone();
-        let default_state_guesses = DATA.default_state_data.as_ref().map(|dsd| compute_default_state_guesses(&possible_words, dsd).collect());
+        let default_state_guesses = DATA.default_state_data
+            .as_ref()
+            .map(|dsd|
+                compute_default_state_guesses(&possible_words, dsd)
+                    .collect());
+
         Self {
             possible_words,
-            word_probabilities,
+            word_weights,
             default_state_guesses,
 
             guesses: [None; NUM_TURNS],
             remaining_possibilities,
-            word_weights,
+            word_probabilities,
         }
     }
 }
@@ -193,26 +243,40 @@ pub enum SolverErr {
 }
 
 impl<'a> Solver<'a> {
+    ///
+    /// Add a guess to the solver so that it makes new recommendations based on the new information
+    /// provided by the user.
+    ///
     pub fn make_guess(&mut self, guess: &str, coloring: Colorings) -> Result<(), SolverErr> {
+        // if we're solved, we cannot make a guess
         if self.is_solved() {
             return Err(SolverErr::AlreadySolved);
         }
 
+        // if there's no possibilities remaining, we cannot make a guess
         if !self.has_possible_guesses() {
             return Err(SolverErr::NoCandidates);
         }
 
+        // try to find out which index to put this guess into, and if we can't find one it's because
+        // we've already made the maximum number of guesses (so we return an error with ?)
         let next_guess_idx = self.next_guess_idx().ok_or(SolverErr::TurnsExhausted)?;
-        let guess = normalize_wordle_word(guess);
 
+        // ensure the provided guess is a 5 letter word in lowercase ascii
+        let guess = normalize_wordle_word(guess);
         if !is_wordle_str(&guess) {
             return Err(SolverErr::InvalidGuess(guess));
         }
 
+        // copy guess characters to a fixed size byte array (we cannot use .as_bytes() because it's
+        // a fixed size array [u8; WORD_SIZE(5)], not a &[u8])
         let mut word = [0u8; WORD_SIZE];
         word.copy_from_slice(guess.as_bytes());
 
+        // track how much entropy remains in the puzzle so we can calculate the delta after making the guess
         let start_entropy = self.remaining_entropy();
+
+        // store the guess in the guesses array
         self.guesses[next_guess_idx] = Some(Guess {
             coloring,
             word,
@@ -220,96 +284,167 @@ impl<'a> Solver<'a> {
             entropy_delta: 0.0,
         });
 
+        // update internal state (such as remaining guesses, probabilities, etc) for the solver
         self.recompute_after_guess();
 
-        self.guesses[next_guess_idx].as_mut().unwrap().entropy_delta = start_entropy - self.remaining_entropy();
+        // re-calculate the puzzle entropy
+        let new_entropy = self.remaining_entropy();
+        // update the entropy_delta of the guess we just made, now that we can compute
+        self.guesses[next_guess_idx].as_mut().unwrap().entropy_delta = start_entropy - new_entropy;
 
         Ok(())
     }
 
     fn recompute_after_guess(&mut self) {
         self.recompute_possibilities();
-        self.recompute_word_weights();
+        self.recompute_word_probabilities();
     }
 
+    ///
+    /// This updates self.remaining_possibilities such that it only contains possible guesses given
+    /// the "rules" specified by the colorings.
+    ///
+    /// For example, if we have a single guess like "quack" with coloring [🟩,🟩,X,🟩,🟩], then we
+    /// can clearly eliminate a possible answer such as "tares" because "q" must be in the first
+    /// position.
+    ///
     fn recompute_possibilities(&mut self) {
+        // retain removes items from the set when the closure returns false
         self.remaining_possibilities.retain(|word|
-            self.guesses
-                .iter()
-                .filter_map(|g| g.as_ref())
-                .fuse()
-                .all(|g| g.allows_other_guess(*word)))
+            is_guess_allowed_by_existing_guesses(&self.guesses, *word))
     }
 
-    fn recompute_word_weights(&mut self) {
-        self.word_weights.clear();
-        self.word_weights.extend(compute_word_weights(&self.remaining_possibilities, &self.word_probabilities));
+    ///
+    /// This recalculates the data in self.word_probabilities to meet word_probabilities' definition.
+    /// Should be called whenever remaining_possibilities is updated...
+    ///
+    fn recompute_word_probabilities(&mut self) {
+        self.word_probabilities.clear();
+        self.word_probabilities.extend(
+            compute_word_probabilities(&self.remaining_possibilities, &self.word_weights));
 
         debug_assert!(
-            self.word_weights.is_empty() ||
-                (self.word_weights.values().copied().sum::<WordleFloat>() - 1.0).abs() < 0.000001,
+            self.word_probabilities.is_empty() ||
+                (self.word_probabilities.values().copied().sum::<WordleFloat>() - 1.0).abs() < 0.000001,
             "weights must add up to exactly 1.0",
         );
     }
 
+    ///
+    /// This function is true when a guess is allowed, false otherwise in these cases:
+    ///   * The puzzle is solved
+    ///   * All possible guesses have been eliminated
+    ///   * Turns are exhausted
+    ///
     pub fn can_guess(&self) -> bool {
         self.num_guesses() < NUM_TURNS && !self.is_solved() && self.has_possible_guesses()
     }
 
-    pub fn can_use_guess(&self, guess: &str) -> bool {
+    ///
+    /// This function simply tests if a guess is in the possible_words set. This does not indicate
+    /// whether a guess is allowed given guesses that have already been made.
+    ///
+    pub fn is_guess_permitted(&self, guess: &str) -> bool {
         self.possible_words.contains(guess)
     }
 
+    ///
+    /// Indicates whether or not the puzzle is solved (the final guess is all green)
+    ///
     pub fn is_solved(&self) -> bool {
         let n_guesses = self.num_guesses();
         n_guesses > 0 && self.guesses[n_guesses - 1].map(|v| v.is_correct()).unwrap_or(false)
     }
 
+    ///
+    /// Returns the number of guesses already made
+    ///
     pub fn num_guesses(&self) -> usize {
         self.next_guess_idx().unwrap_or(NUM_TURNS)
     }
 
+    ///
+    /// Indicates whether or not any words can be guessed. This returns false in cases where the
+    /// guesses already made have eliminated all possibilities.
+    ///
     pub fn has_possible_guesses(&self) -> bool {
         !self.remaining_possibilities.is_empty()
     }
 
+    ///
+    /// Returns the number of possible guesses which remain
+    ///
     pub fn num_remaining_possibilities(&self) -> usize {
         self.remaining_possibilities.len()
     }
 
+    ///
+    /// Returns the number of possible guesses, without considering any guesses that have been made
+    ///
     pub fn num_total_possibilities(&self) -> usize {
         self.possible_words.len()
     }
 
+    ///
+    /// Determines the "entropy" of the puzzle given the guesses that remain.
+    ///
+    /// todo document this
+    ///
     pub fn remaining_entropy(&self) -> WordleFloat {
         self.remaining_possibilities
             .iter()
             .copied()
-            .map(|word| self.freq_weight_for(word))
+            .map(|word| self.word_probability_for(word))
             .map(|item| item * -(item.log2()))
             .sum()
     }
 
+    ///
+    /// Returns the first empty index in the self.guesses array. Indicates many things:
+    ///   * How many guesses have been made = the output of this function
+    ///   * None = turns exhausted
+    ///
+    /// This function's primary purpose, however, is to provide the index to store a new guess at
+    ///
     fn next_guess_idx(&self) -> Option<usize> {
+        // find the first None item in self.guesses
         for (idx, v) in self.guesses.iter().enumerate() {
             if v.is_none() {
+                // return it's index
                 return Some(idx);
             }
         }
 
+        // there are no None items in self.guesses, therefore we cannot store a new guess, and
+        // turns have been exhausted
         None
     }
 
+    ///
+    /// "default state" is defined as "no guesses have been made" and we can safely load the cached
+    /// default scores to save on that super expensive calculation
+    ///
     fn is_default_state(&self) -> bool {
         self.num_guesses() == 0
     }
 
+    ///
+    /// Returns the highest scored guesses which remain. A maximum of K items are returned.
+    ///
+    /// This uses const generics because TopK does, and ultimately this is to avoid allocating a Vec
+    /// and sorting it based on score.
+    ///
+    /// The returned iterator may not return K items, but fewer, if the number of possibilities is
+    /// less than K.
+    ///
     pub fn top_k_guesses<'b, const K: usize>(&'b self) -> TopK<ScoredCandidate<'a>, K>
         where
             'a: 'b,
             [Option<ScoredCandidate<'a>>; K]: Default,
             [Option<Score>; K]: Default,
     {
+        // an efficiency hack, mentioned a few times above... if we are in default state and we have
+        // cached data available, then we should return that instead of computing it
         if self.is_default_state() {
             if let Some(dsd) = &self.default_state_guesses {
                 if dsd.len() >= K {
@@ -318,10 +453,19 @@ impl<'a> Solver<'a> {
             }
         }
 
-        self.top_k_guesses_real()
+        self.compute_top_k_guesses()
     }
 
-    pub fn top_k_guesses_real<'b, const K: usize>(&'b self) -> TopK<ScoredCandidate<'a>, K>
+    ///
+    /// Returns the highest scored guesses which remain. A maximum of K items are returned.
+    ///
+    /// You should use the function top_k_guesses instead. This function forces computation of it's
+    /// output whereas the top_k_guesses may use cached data when available.
+    ///
+    /// The reason this function is pub is so that we can call it to generate the cached data for
+    /// the default state at compile time (in gen_default_state_data.rs).
+    ///
+    pub fn compute_top_k_guesses<'b, const K: usize>(&'b self) -> TopK<ScoredCandidate<'a>, K>
         where
             'a: 'b,
             [Option<ScoredCandidate<'a>>; K]: Default,
@@ -330,118 +474,257 @@ impl<'a> Solver<'a> {
         self.remaining_possibilities
             .iter()
             .copied()
-            .map(self.map_to_scored_guess())
+            .map(|word| ScoredCandidate {
+                word,
+                score: self.score_guess(word),
+            })
             .top_k(|item| item.score)
     }
 
-    fn map_to_scored_guess<'b>(&'b self) -> impl Fn(&'a str) -> ScoredCandidate<'a> + 'b {
-        move |word| {
-            let score = self.score_guess(word);
-            ScoredCandidate {
-                word,
-                score,
-            }
-        }
-    }
-
+    ///
+    /// Computes a score for a given possible guess
+    ///
     fn score_guess(&self, guess: &'a str) -> Score {
+        // expected info in bits... explanation & definition below
         let expected_info = self.expected_guess_info(guess);
-        let weight = self.word_probabilities
+
+        // weight (not probability!) of the word
+        let weight = self.word_weights
             .get(guess)
             .copied()
-            .unwrap_or(MIN_WORD_PROBABILITY);
+            .unwrap_or(MIN_WORD_WEIGHT);
 
         Score::new(expected_info, weight)
     }
 
+    ///
+    /// Computes the "expected info" of a given guess.
+    ///
+    /// I like to think of "info" as a measurement of how much of the search space is eliminated
+    /// with a certain guess.
+    ///
+    /// This "info" can only be calculated if we know the guess and the coloring which the guess
+    /// produces. This is due to the definition of "info..." we must know how much of the search
+    /// space is eliminated.
+    ///
+    /// For example, if we guess "quack" and the coloring is [🟩,🟩,X,🟩,🟩] then we can eliminate
+    /// a huge number of other possible answers such as "lifts" or "rates" because the coloring
+    /// excludes them (qu_ck are green and therefore the answer must contain them at that position).
+    ///
+    /// Because we do not know the answer, we cannot know what coloring we will get. Therefore, we
+    /// cannot calculate how much info a guess will get. However, we can calculate how much info we
+    /// get on average.
+    ///
+    /// In the above example of "quack" it's actually extremely unlikely to get the coloring
+    /// [🟩,🟩,X,🟩,🟩] because very few answers produce this coloring (only example I can think
+    /// of is "quick"). Although this coloring is high information, it is low probability.
+    ///
+    /// The implementation below tries to calculate the probability of each possible coloring.
+    /// Consider if a coloring only occurs once, this means two things- it's unlikely to happen, but
+    /// if it does then we gain a tremendous amount of information. The information gained and the
+    /// probability of seeing a coloring are "two sides of the same coin."
+    ///
+    /// The probability of seeing a coloring is calculated first, then the info gained by that coloring
+    /// is log2 of that probability. For example, if the probability of a coloring is 0.5, that means
+    /// half the search space produces that coloring (and the other half is eliminated) giving us
+    /// log2(0.5) = 2 bits of information with a 0.5 probability.
+    ///
+    /// The "expected info" is therefore the sum of p * p.log2() for all colorings.
+    ///
     fn expected_guess_info(&self, guess: &'a str) -> WordleFloat {
+        // This array holds a float  for each coloring which tracks the probability of it occurring.
         let mut probabilities: [WordleFloat; Colorings::NUM_STATES] = [0.0 as WordleFloat; Colorings::NUM_STATES];
-        self.remaining_possibilities
-            .iter()
-            .for_each(|possible_answer| {
-                let weight = self.freq_weight_for(possible_answer);
-                let coloring = Colorings::with_guess_answer(guess, possible_answer);
-                let bucket_idx = coloring.to_code() as usize;
-                probabilities[bucket_idx] += weight;
-            });
 
+        // go through all possible answers that remain
+        for possible_answer in &self.remaining_possibilities {
+            // figure out how probable this answer actually is. This is based on english word frequency
+            // data, and the sum of freq_weight_for applies across all possibles should be 1.0
+            let weight = self.word_probability_for(possible_answer);
+
+            // determine what coloring we'd get if we used guess & assumed answer=possible_answer
+            let coloring = Colorings::with_guess_answer(guess, possible_answer);
+
+            // this converts the coloring to a unique index (it's like a base 3 number, see to_code)
+            let bucket_idx = coloring.to_code() as usize;
+
+            // we add the weight to the bucket because OR probabilities add (the chance of seeing
+            // a given coloring = chance of word A || chance of word B || ... when A, B, ...
+            // give that coloring)
+            probabilities[bucket_idx] += weight;
+        }
+
+        // ensure (in debug builds only) that the sum of all probabilities is (approximately) 1.0
         debug_assert!((probabilities.iter().sum::<WordleFloat>() - 1.0).abs() < 0.0001);
 
+        // determine the average information gained
         probabilities.iter()
+            // filter non-positive data (aka the 0s) because log2(0) is undefined
             .filter(|v| *v > &(0.0 as WordleFloat))
             .map(|v| v * -(v.log2()))
             .sum()
     }
 
-    fn freq_weight_for(&self, guess: &'a str) -> WordleFloat {
-        self.word_weights[guess]
+    ///
+    /// Look up the probability of a given guess (not weight!).
+    ///
+    /// The word must be in remaining_possibilities (and therefore word_probabilities) or no
+    /// probability will be found.
+    ///
+    /// In a perfect world this would return an Option, but instead panics if no probability is found
+    ///
+    fn word_probability_for(&self, guess: &'a str) -> WordleFloat {
+        self.word_probabilities[guess]
     }
 
-    pub fn uncertainty(&self) -> WordleFloat {
-        self.remaining_possibilities.iter().map(|guess| {
-            let p = self.freq_weight_for(guess);
-            p * -p.log2()
-        }).sum()
+    ///
+    /// Returns all the guesses we've made so far.
+    ///
+    pub fn iter_guesses<'b>(&'b self) -> impl Iterator<Item=&'b Guess> + 'b where 'a: 'b {
+        iter_guesses(&self.guesses)
     }
 
-    pub fn iter_guesses<'b>(&'b self) -> impl Iterator<Item=Guess> + 'b where 'a: 'b {
-        self.guesses.iter().filter_map(|v| v.as_ref()).copied()
-    }
-
+    ///
+    /// Clears all guesses we've made and resets all state to original state. This avoids
+    /// recalculating some data (such as word_weights) when we play another game
+    ///
     pub fn reset(&mut self) {
         self.guesses = [None; NUM_TURNS];
         self.remaining_possibilities.clear();
         self.remaining_possibilities.extend(&self.possible_words);
-        self.recompute_word_weights();
+        self.recompute_word_probabilities();
     }
 }
 
-fn compute_word_probabilities<'a: 'b, 'b>(
-    words: &'b HashSet<&'a str>,
+///
+/// Returns whether or not the provided guesses allow the provided guess
+///
+/// This is external to the solver because it is used in only one place- recompute_possibilities
+/// which borrows solver '&mut self'
+///
+/// This function would be defined &self meaning recompute_possibilities would borrow self immutably
+/// & mutably, which is an error.
+///
+/// Therefore, we allow borrowing of the field &self.guesses (and passing that to this function)
+/// instead, which is not an error. Think of it as constraining the scope of the immutable borrow to
+/// a single field, instead of borrowing the entire Solver struct to determine if the guess is allowed.
+///
+fn is_guess_allowed_by_existing_guesses(guesses: &[Option<Guess>], guess: &str) -> bool {
+    iter_guesses(guesses).all(|g| g.allows_other_guess(guess))
+}
+
+///
+/// Helper which takes any slice of Option<Guess> and iterates through references to the Guesses
+/// that have been made.
+///
+fn iter_guesses<'b>(guesses: &'b[Option<Guess>]) -> impl Iterator<Item=&'b Guess> + 'b {
+    guesses
+        .iter()
+        // convert &Option<Guess> to &Guess (two steps in one).
+        // .as_ref() does &Option<Guess> -> Option<&Guess> and filter_map skips None items
+        // and emits the inner value of Some items
+        .filter_map(|g| g.as_ref())
+        // the guesses is a fixed size array which contains Options. When we encounter the
+        // first None entry, we know that all remaining entries are also None, so we can
+        // stop iterating upon the first None (aka fuse the iterator).
+        .fuse()
+}
+
+///
+/// This function computes "weights" (not probabilities) for the possible_guesses.
+///
+/// Based on the 3blue1brown implementation, we base the weight on the word's rank.
+///
+/// An arbitrary line called N_COMMON(=3200) is defined. Words with lower ranks (ie; more common
+/// words with rank 0, 1, 2, etc) are considered common, whereas words with ranks higher than
+/// N_COMMON are considered uncommon.
+///
+/// A WIDTH is defined, and this is a unitless scaling factor.
+///
+/// A value called "x" is calculated for each word. Imagine this as a position along a sigmoid curve.
+/// The most common word (rank=0) is given an "x" value = WIDTH, and words with lower ranks are
+/// linearly spaced such that the word with rank N_COMMON has an "x" value of 0. Words with ranks
+/// lower than N_COMMON continue the same linear spacing into negative numbers off to -inf.
+///
+/// The "x" value is then passed into sigmoid so that it exists between (0.0, 1.0) for all words,
+/// and this is the "weight"
+///
+/// Finally, we use MIN_WORD_WEIGHT when no frequency data exists for a given word, or when the computed
+/// weight is below MIN_WORD_WEIGHT. When a word does not have frequency data, it is a fair assumption
+/// that it is extremely uncommon.
+///
+/// The constants N_COMMON and WIDTH can be tuned to possibly yield better results. Their values depend
+/// on the size of the allowed_words and frequency data file. If you use a different dataset for word
+/// frequency it is recommended to experiment and tune these constants to this new dataset.
+///
+fn compute_word_weights<'a: 'b, 'b>(
+    possible_guesses: &'b HashSet<&'a str>,
     frequency_data: &'b FrequencyData,
 ) -> impl Iterator<Item=(&'a str, WordleFloat)> + 'b
 {
+
+    // Implementation defines a few helper functions...
+    //
+    // * raw_compute_word_wight = actually do the computation, sometimes returning None when no
+    //                            data exists about a word
+    // * compute_word_weight = do the computation, but default to MIN_WORD_WEIGHT
+    //
     #[inline]
-    fn raw_compute_word_probability(guess: &str, frequency_data: &FrequencyData) -> Option<WordleFloat> {
+    fn raw_compute_word_weight(guess: &str, frequency_data: &FrequencyData) -> Option<WordleFloat> {
         const N_COMMON: WordleFloat = 3200.0;
         const WIDTH: WordleFloat = 5.7;
 
         let n_words = frequency_data.by_word.len() as WordleFloat;
-        let rank = frequency_data.by_word.get(guess)?.position as WordleFloat;
+        let rank = frequency_data.by_word.get(guess)?.rank as WordleFloat;
         let x = ((N_COMMON - rank) / n_words) * WIDTH;
-        let out = sigmoid(x);
+        let weight = sigmoid(x);
 
-        Some(if out < MIN_WORD_PROBABILITY {
-            MIN_WORD_PROBABILITY
+        Some(if weight < MIN_WORD_WEIGHT {
+            MIN_WORD_WEIGHT
         } else {
-            out
+            weight
         })
     }
 
     #[inline]
-    fn compute_word_probability(guess: &str, frequency_data: &FrequencyData) -> WordleFloat {
-        raw_compute_word_probability(guess, frequency_data).unwrap_or(MIN_WORD_PROBABILITY)
+    fn compute_word_weight(guess: &str, frequency_data: &FrequencyData) -> WordleFloat {
+        raw_compute_word_weight(guess, frequency_data).unwrap_or(MIN_WORD_WEIGHT)
     }
 
-    words.iter()
-        .map(|w| (*w, compute_word_probability(w, frequency_data)))
+    possible_guesses.iter()
+        .map(|w| (*w, compute_word_weight(w, frequency_data)))
 }
 
-fn compute_word_weights<'a: 'b, 'b>(
+///
+/// "weights" is a mapping from possible guesses -> weight of seeing that guess. These values do not
+/// sum to 1.0
+///
+/// "words" is a subset of the keys from "weights"
+///
+/// The output is (word, probability) pairs such that:
+///   * only words in the "words" HashSet are emitted
+///   * all probability values sum to (approximately) 1.0
+///
+fn compute_word_probabilities<'a: 'b, 'b>(
     words: &'b HashSet<&'a str>,
-    probabilities: &'b HashMap<&'a str, WordleFloat>,
+    weights: &'b HashMap<&'a str, WordleFloat>,
 ) -> impl Iterator<Item=(&'a str, WordleFloat)> + 'b
 {
-    let total: WordleFloat = words.iter().map(|w| probabilities[w]).sum();
-    words.iter().map(move |w| (*w, probabilities[w] / total))
+    // get weights for each of the words provided, and sum that up, so we can perform normalization
+    let total: WordleFloat = words.iter().map(|w| weights[w]).sum();
+    // go through all the words (again) and divide each weight by the sum, producing a probability
+    words.iter().map(move |w| (*w, weights[w] / total))
 }
 
+///
+/// The cached default state data is stored as &[DefaultStateEntry] and this function helps convert
+/// that to Vec<ScoredCandidate<'a>>.
+///
 fn compute_default_state_guesses<'a: 'b, 'b>(
     words: &'b HashSet<&'a str>,
     supplied_data: &'b [DefaultStateEntry],
-) -> impl Iterator<Item=ScoredCandidate<'a>> + 'b {
+) -> impl Iterator<Item=ScoredCandidate<'a>> + 'b
+{
     supplied_data.iter().map(|entry| {
-
         let word = *words.iter()
             .find(|item| *item == &entry.word)
             .expect("default state data should contain possible words only");

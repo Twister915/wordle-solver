@@ -14,7 +14,7 @@ fn main() {
 
     let start_at = Instant::now();
     wordle_site::wordle::Solver::default()
-        .top_k_guesses_real::<{N_RECOMMENDATIONS}>()
+        .compute_top_k_guesses::<{N_RECOMMENDATIONS}>()
         .for_each(|item| {
             let line = format!("{} {} {} {}\n", item.word, item.score.abs, item.score.expected_info, item.score.weight);
             f.write_all(line.as_bytes()).expect("should write OK");

@@ -21,36 +21,52 @@ lazy_static! {
 #[folder = "data/"]
 struct RawData;
 
+/// Holds all of the data represented by the static/embedded text files
 #[derive(Clone, Debug)]
 pub struct Data {
+    /// Word frequencies in english for relative ranking & weight/probability calculations
     pub frequency_data: FrequencyData,
+    /// The list of words which can be guessed
     pub allowed_words: Vec<String>,
+    /// Cached calculation of scored guesses in the "default state" (see game.rs for more details)
     pub default_state_data: Option<Vec<DefaultStateEntry>>,
 }
 
 #[derive(Clone, Debug)]
 pub struct FrequencyData {
-    pub by_word: HashMap<String, FrequencyDetail>,
+    /// All parsed lines from the frequency data file, in the order they were read
     pub lines: Vec<FrequencyDataLine>,
+
+    /// Same data as lines but organized in a map so you can look up the data for each word quickly
+    pub by_word: HashMap<String, FrequencyDetail>,
 }
 
 #[derive(Clone, Debug)]
 pub struct FrequencyDataLine {
+    /// The word on this line
     pub word: String,
+    /// The data associated with that word
     pub detail: FrequencyDetail,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct FrequencyDetail {
+    /// How often this dataset claims to have seen this word
     pub frequency: i64,
-    pub position: usize,
+    /// Rank=0 means most common word in english (according to this dataset), and higher ranks being
+    /// less common words.
+    pub rank: usize,
 }
 
 #[derive(Clone, Debug)]
 pub struct DefaultStateEntry {
+    /// The word being suggested
     pub word: String,
+    /// The total score (score.abs)
     pub score: WordleFloat,
+    /// The expected_info for this guess (score.expected_info)
     pub expected_info: WordleFloat,
+    /// The weight calculated for this guess (score.weight)
     pub weight: WordleFloat,
 }
 
@@ -68,6 +84,8 @@ pub enum LoadDataErr {
     BadDefaultDataLine(String),
     #[error("malformed floating point text '{0}'")]
     BadFloatStr(String, #[source] ParseFloatError),
+    #[error("the word '{0}' is not a valid wordle word")]
+    NonWordleWord(String),
 }
 
 impl Data {
@@ -86,6 +104,7 @@ impl Data {
     }
 }
 
+/// Parses frequency data text into FrequencyData
 fn try_read_frequency_data() -> Result<FrequencyData, LoadDataErr> {
     let file_data = retrieve_file_as_str(FREQUENCY_FILE_NAME)?
         .ok_or(LoadDataErr::MissingFrequencyDataFile)?;
@@ -96,17 +115,28 @@ fn try_read_frequency_data() -> Result<FrequencyData, LoadDataErr> {
     let mut pos = 0;
 
     for line in file_data.lines() {
+        // frequency data is expected in the following format:
+        //
+        // word1 123123
+        // word2 3213
+        // ...
+        //
+        // We simply need to identify the word & the number following it (the "frequency").
         if let Some((l, r)) = line.split_once(' ') {
+            // clean up the word
             let word = normalize_wordle_word(l);
+            // verify it's a 5 letter word in the right case
             if is_wordle_str(&word) {
+                // parse the number
                 let frequency = r.trim()
                     .parse::<i64>()
                     .map_err(|err|
                         LoadDataErr::BadFrequencyNumber(r.to_string(), err))?;
 
+                // store the line!
                 let detail = FrequencyDetail {
                     frequency,
-                    position: pos,
+                    rank: pos,
                 };
                 pos += 1;
 
@@ -127,6 +157,7 @@ fn try_read_frequency_data() -> Result<FrequencyData, LoadDataErr> {
     })
 }
 
+/// Reads the allowed words text file. This is pretty simple: one allowed word per line.
 fn try_read_allowed_words() -> Result<Vec<String>, LoadDataErr> {
     Ok(retrieve_file_as_str(ALLOWED_WORDS_FILE_NAME)?
         .ok_or(LoadDataErr::MissingAllowedWordsFile)?
@@ -136,29 +167,57 @@ fn try_read_allowed_words() -> Result<Vec<String>, LoadDataErr> {
         .collect())
 }
 
+/// Reads cached default state data, optionally (if it exists)
 fn try_read_default_state_data() -> Result<Option<Vec<DefaultStateEntry>>, LoadDataErr> {
+    // try to open the default state data (if it doesn't exist, then just return Ok(None))
     let raw_data = match retrieve_file_as_str(DEFAULT_STATE_DATA_FILE_NAME)? {
         Some(data) => data,
         None => return Ok(None),
     };
+
     let mut out = Vec::with_capacity(N_RECOMMENDATIONS);
+    // parse each line in default_state_data
     for line in raw_data.lines()
     {
+        // this file is expected to contain 4 pieces of information on each line, split by a space:
+        //
+        // * word being suggested (5 letter string / wordle word)
+        // * it's score (float)
+        // * it's expected_info (float)
+        // * it's weight (float)
+        //
+        // The file should also be already sorted from highest -> lowest score
+        //
         let mut parts = line.splitn(4, ' ');
+
+        // read the word
         let word = if let Some(w) = parts.next() {
-            w.to_string()
+            normalize_wordle_word(w)
         } else {
             continue;
         };
 
+        // validate
+        if !is_wordle_str(&word) {
+            return Err(LoadDataErr::NonWordleWord(word));
+        }
+
+        // helper closure to "consume" a float
+        // basically reads whatever parts.next() returns as a float, returning an error if the float
+        // isn't valid, or doesn't exist
         let mut consume_float = || {
+            // first get the string representation & handle the case when it doesn't exist
             let raw = parts.next()
                 .ok_or_else(|| LoadDataErr::BadDefaultDataLine(line.to_string()))?;
+
+            // then try to parse it as a WordleFloat (aka f32/f64), and wrap the error if it can't
+            // be parsed
             raw.trim()
                 .parse::<WordleFloat>()
                 .map_err(|err| LoadDataErr::BadFloatStr(raw.to_string(), err))
         };
 
+        // consume the three floats (score, expected_info, weight)
         let score = consume_float()?;
         let expected_info = consume_float()?;
         let weight = consume_float()?;

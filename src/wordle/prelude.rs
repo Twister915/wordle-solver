@@ -4,7 +4,7 @@ pub const ALPHABET_SIZE: usize = (('z' as usize) - ('a' as usize)) + 1;
 
 pub type WordleFloat = f64;
 
-pub const MIN_WORD_PROBABILITY: WordleFloat = 0.0001;
+pub const MIN_WORD_WEIGHT: WordleFloat = 0.0001;
 
 pub use crate::util::*;
 

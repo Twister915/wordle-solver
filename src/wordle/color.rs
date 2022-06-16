@@ -3,8 +3,20 @@ use std::ops::{Index, IndexMut};
 use self::Coloring::*;
 use super::prelude::*;
 
+///
+/// Any set of colorings can be converted to a "code" which uniquely identifies that specific
+/// coloring. This type is the number we use to store that code (and we pick u8 because the range is
+/// 0 -> 3^5=243 for 3 colorings in a 5 letter puzzle).
+///
 pub type ColoringCode = u8;
 
+///
+/// The three different colors that a wordle square can be...
+///   * Excluded = the letter is not in the answer (also indicates no further instances of a letter
+///                when another square with the same letter is colored misplaced/correct)
+///   * Misplaced = the letter is in the answer, but not in this position
+///   * Correct = the letter is in the answer at this position
+///
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Coloring {
     Excluded,
@@ -12,11 +24,13 @@ pub enum Coloring {
     Correct,
 }
 
-
 impl Coloring {
+    /// All three colorings (make sure this actually matches the definition above)
     pub const ALL: [Coloring; 3] = [Excluded, Misplaced, Correct];
+    /// The number of possible colorings
     pub const NUM: usize = Self::ALL.len();
 
+    /// Converts the coloring to a number (0, 1, or 2)
     pub fn ordinal(&self) -> ColoringCode {
         use Coloring::*;
         match self {
@@ -26,6 +40,7 @@ impl Coloring {
         }
     }
 
+    /// Converts a number (usually from .ordinal()) back to a Coloring
     pub fn from_ordinal(code: ColoringCode) -> Option<Self> {
         use Coloring::*;
         Some(match code {
@@ -36,6 +51,7 @@ impl Coloring {
         })
     }
 
+    /// Gives the best emoji to represent the coloring (used for debug printing)
     pub fn emoji(&self) -> &'static str {
         use Coloring::*;
         match self {
@@ -46,17 +62,22 @@ impl Coloring {
     }
 }
 
+/// An array of Colorings, one for each square in the puzzle.
 pub type ColoringsArray = [Coloring; WORD_SIZE];
 
+/// The array of Colorings, but in a struct, so that we can attach some useful functions to a
+/// complete set of Colorings.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct Colorings(pub ColoringsArray);
 
+/// Automatic conversion of [Coloring; WORD_SIZE] -> Colorings
 impl From<ColoringsArray> for Colorings {
     fn from(arr: ColoringsArray) -> Self {
         Self(arr)
     }
 }
 
+/// Delegate indexing of the struct to it's inner value
 impl Index<usize> for Colorings {
     type Output = Coloring;
 
@@ -65,6 +86,7 @@ impl Index<usize> for Colorings {
     }
 }
 
+/// Delegate mutable indexing of the struct to it's inner value
 impl IndexMut<usize> for Colorings {
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
         &mut self.0[index]
@@ -72,17 +94,27 @@ impl IndexMut<usize> for Colorings {
 }
 
 impl Colorings {
+    /// How many different possible colorings are there? In the case of a 5 word puzzle with 3
+    /// colorings it's 3^5=243 possible colorings
     pub const NUM_STATES: usize = Coloring::NUM.pow(WORD_SIZE as u32);
 
+    ///
+    /// Compute what colors would be shown given some guess & answer. For example if the guess was
+    /// "tares" and the answer was "scare" we should compute [Excluded, Misplaced, Misplaced, Misplaced, Misplaced]
+    ///
+    /// This is implemented by:
+    /// * creating an empty [Coloring; WORD_SIZE] where all colors are defaulted to Misplaced
+    /// * computing a "budget" for each letter in the alphabet (based on their frequency in the answer)
+    /// * performing a "GREEN pass" which marks all correctly positioned letters (and updates the budget)
+    /// * performing a "YELLOW pass" to mark all misplaced letters (based on the remaining budget for each letter)
+    ///
     pub fn with_guess_answer(guess: &str, answer: &str) -> Self {
-        use Coloring::*;
-        let mut out = Self::default();
-
         debug_assert!(is_wordle_str(answer));
-        let mut answer_letter_counts = count_letters(answer);
-
-        let answer_bytes = answer.as_bytes();
         debug_assert!(is_wordle_str(guess));
+
+        let mut out = Self::default();
+        let mut answer_letter_counts = count_letters(answer);
+        let answer_bytes = answer.as_bytes();
         let guess_bytes = guess.as_bytes();
 
         // GREEN pass
@@ -111,6 +143,18 @@ impl Colorings {
         out
     }
 
+    ///
+    /// Computes a code that uniquely identifies this particular coloring. These codes are numbers in
+    /// [0, 243) (in the case of a 5 letter puzzle).
+    ///
+    /// We essentially treat the colorings as a 5 digit base-3 number. Each Coloring has an ordinal()
+    /// which ranges from [0, 3), and the left-most color is digit 0, next digit 1, etc.
+    ///
+    /// This is useful because in the Solver we want one bucket for each possible coloring, and
+    /// using this to_code() we can convert a Coloring to an array index. The alternative (using a
+    /// HashMap<Colorings, _>) requires implementing and calculating a Hash, allocating on the heap,
+    /// etc. We avoid this and stay on the stack using static sized arrays indexed by Colorings.to_code()
+    ///
     pub fn to_code(&self) -> ColoringCode {
         let mut out = 0;
         let mut multiplier = 1;
@@ -121,6 +165,12 @@ impl Colorings {
         out
     }
 
+    ///
+    /// Converts a ColoringCode back to Colorings.
+    ///
+    /// This works by treating the code as a base-3 number, and the code is basically identical to
+    /// any digit-by-digit processing you've written before.
+    ///
     pub fn from_code(mut code: ColoringCode) -> Option<Self> {
         let mut out = Self::default();
         for i in 0..WORD_SIZE {
@@ -131,8 +181,8 @@ impl Colorings {
         Some(out)
     }
 
-    // for testing
     #[cfg(test)]
+    /// Iterates through all possible [Coloring; 5] configurations
     fn iter_all_possible() -> IterAllColorings {
         IterAllColorings::default()
     }
@@ -140,7 +190,7 @@ impl Colorings {
 
 impl Default for Colorings {
     fn default() -> Self {
-        Self([Coloring::Excluded; WORD_SIZE])
+        Self([Excluded; WORD_SIZE])
     }
 }
 
@@ -173,6 +223,25 @@ impl Iterator for IterAllColorings {
     fn next(&mut self) -> Option<Self::Item> {
         return if let Some(cur) = self.next {
             let mut next = cur;
+            // basically... try to flip the right-most color through these three values:
+            //  excluded -> misplaced -> correct
+            // but if the right-most color is already "correct" then we reset it back to "excluded"
+            // and try to perform the same operation on the next color (to the left).
+            //
+            // This results in a pattern like:
+            // [Excluded, Excluded, Excluded, Excluded, Excluded]
+            // [Excluded, Excluded, Excluded, Excluded, Misplaced]
+            // [Excluded, Excluded, Excluded, Excluded, Correct]
+            // [Excluded, Excluded, Excluded, Misplaced, Excluded]
+            // [Excluded, Excluded, Excluded, Misplaced, Misplaced]
+            // [Excluded, Excluded, Excluded, Misplaced, Correct]
+            // [Excluded, Excluded, Excluded, Correct, Excluded]
+            // [Excluded, Excluded, Excluded, Correct, Misplaced]
+            // [Excluded, Excluded, Excluded, Correct, Correct]
+            // [Excluded, Excluded, Misplaced, Excluded, Excluded]
+            // ...
+            //
+            // which will eventually exhaust all possible colorings
             for k in (0..WORD_SIZE).rev() {
                 match next[k] {
                     Excluded => {
