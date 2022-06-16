@@ -32,3 +32,6 @@ Trunk is capable of installing some (perhaps all) of the tools it depends on (li
 develop on an M1 Mac (in June 2022) and trunk does not correctly install required tools because the architecture is not 
 supported. This is why I have created `setup.sh`. It is possible that simply installing trunk and trying to build will
 be sufficient to build this project.
+
+The output of a successful build will be a set of static files in the `dist/` directory. Serve these files from a 
+webserver or cloud storage bucket, and play some Wordle!
