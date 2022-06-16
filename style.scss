@@ -254,5 +254,14 @@ html, body {
 .footer {
   font-size: 12px;
   padding: 3px;
-  color: #818384;
+
+  &.debug {
+    background-color: orangered;
+    color: white;
+    font-weight: bold;
+  }
+
+  &:not(.debug) {
+    color: #818384;
+  }
 }

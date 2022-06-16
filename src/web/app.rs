@@ -32,7 +32,8 @@ impl Component for App {
             recommendations: Vec::default(),
             filled_guess: [None; WORD_SIZE],
             filled_colors: [Coloring::Excluded; WORD_SIZE],
-            keydown_listener: KeyListener::create(ctx.link().callback(Msg::OnKeyDown)).expect("should be able to attach key listener"),
+            keydown_listener: KeyListener::create(ctx.link().callback(Msg::OnKeyDown))
+                .expect("should be able to attach key listener"),
         };
         out.update_recommendations();
         out
@@ -103,16 +104,27 @@ impl App {
                     <ol class="steps">
                         <li>{"Click on a Suggestion on the sidebar (or type a word)"}</li>
                         <li>{"Guess the Suggestion in your Wordle game"}</li>
-                        <li>{"Input the colors that Wordle gave to your guess by clicking on the squares. Each click will change to the next color (grey, yellow, green)."}</li>
-                        <li>{"Hit the ✔️ button once the colors match those provided by Wordle"}</li>
+                        <li>{
+                            "Input the colors that Wordle gave to your guess by clicking on the \
+                            squares. Each click will change to the next color."
+                        }</li>
+                        <li>
+                            {"Hit the ✔️ button once the colors match those provided by Wordle"}
+                        </li>
                     </ol>
-                    {"Suggestions will be updated after you make each guess, until the puzzle is solved."}
+                    {"Suggestions will be updated after you make each guess, until the puzzle \
+                    is solved."}
                 </p>
 
                 <h2>{"Methodology"}</h2>
                 <p>
                     <>{"Math based on "}</>
-                    <a href="https://www.youtube.com/watch?v=v68zYyaEmEA" target="_blank" class="click-text">{"Grant Sanderson (3blue1brown)'s Video"}</a>
+                    <a
+                        href="https://www.youtube.com/watch?v=v68zYyaEmEA"
+                        target="_blank"
+                        class="click-text">
+                        {"Grant Sanderson (3blue1brown)'s Video"}
+                    </a>
                     <>{" about using "}</>
                     <a
                         href="https://en.wikipedia.org/wiki/Entropy_(information_theory)"
@@ -125,21 +137,27 @@ impl App {
                 <p>
                     <>{"To suggest a "}</>
                     <em>{"good guess"}</em>
-                    <>{" we basically calculate how much 'information' is gained, on average, for a given guess. \
-                    A guess will receive a 'coloring' and these colorings eliminate possible answers. \
-                    A 'high information' coloring is one where the coloring eliminates \
-                    the most candidate answers. Guesses which often produce high information colorings \
-                    are ranked highly, and suggested to the user."}</>
+                    <>{" we basically calculate how much 'information' is gained, on average, for a \
+                    given guess. A guess will receive a 'coloring' and these colorings eliminate \
+                    possible answers. A 'high information' coloring is one where the coloring \
+                    eliminates the most candidate answers. Guesses which often produce high \
+                    information colorings are ranked highly, and suggested to the user."}</>
                 </p>
                 <p>
                     <>{"The "}</>
                     <em>{"expected information"}</em>
-                    <>{" is combined with data about the frequency of word use in English, so that we \
-                    suggest words that are likely to be the answer"}</>
+                    <>{" is combined with data about the frequency of word use in English, so that \
+                    we suggest words that are likely to be the answer"}</>
                 </p>
                 <p>
-                    <>{"This summary is incomplete and oversimplified and it is highly recommended you watch the "}</>
-                    <a href="https://www.youtube.com/watch?v=v68zYyaEmEA" target="_blank" class="click-text">{"video"}</a>
+                    <>{"This summary is incomplete and oversimplified and it is highly recommended \
+                    you watch the "}</>
+                    <a
+                        href="https://www.youtube.com/watch?v=v68zYyaEmEA"
+                        target="_blank"
+                        class="click-text">
+                        {"video"}
+                    </a>
                     <>{" which visualizes the scoring computation quite well."}</>
                 </p>
             </div>
@@ -193,7 +211,14 @@ impl App {
         html! {
             <div class="instructions">
                 <>{"You can click on any word below to guess it, or you can "}</>
-                <span class="click-text" onclick={ctx.link().callback(move |_| Msg::PickRecommendation(top_guess.to_string()))}>{"click here"}</span>
+                <span
+                    class="click-text"
+                    onclick={ ctx
+                        .link()
+                        .callback(move |_|
+                            Msg::PickRecommendation(top_guess.to_string()))}>
+                    {"click here"}
+                </span>
                 <>{format!(" to pick the best guess ({})", top_guess)}</>
             </div>
         }
@@ -212,10 +237,20 @@ impl App {
         }
     }
 
-    fn show_recommendation_item(idx: usize, item: &ScoredCandidate<'static>, ctx: &Context<Self>) -> Html {
+    fn show_recommendation_item(
+        idx: usize,
+        item: &ScoredCandidate<'static>,
+        ctx: &Context<Self>,
+    ) -> Html
+    {
         let word_cloned = item.word;
         html! {
-            <div class="item" onclick={ctx.link().callback(move |_| Msg::PickRecommendation(word_cloned.to_string()))}>
+            <div
+                class="item"
+                onclick={ ctx
+                    .link()
+                    .callback(move |_|
+                        Msg::PickRecommendation(word_cloned.to_string()))}>
                 <div class="ordinal">{format!("#{:02}", idx + 1)}</div>
                 <div class="word">{&item.word}</div>
                 <div class="details">
@@ -237,11 +272,17 @@ impl App {
                 </h1>
                 <p class="tagline">
                     <>{"Solves "}</>
-                    <a href="https://www.nytimes.com/games/wordle/index.html" target="_blank" class="click-text">{"Wordle"}</a>
+                    <a
+                        href="https://www.nytimes.com/games/wordle/index.html"
+                        target="_blank"
+                        class="click-text">
+                        {"Wordle"}
+                    </a>
                     <>{" by suggesting guesses & updating as you play!"}</>
                 </p>
                 <div class="game">
-                    {(0..NUM_TURNS).map(|idx| self.show_wordle_row(ctx, &guesses, idx)).collect::<Html>()}
+                    {(0..NUM_TURNS).map(|idx|
+                        self.show_wordle_row(ctx, &guesses, idx)).collect::<Html>()}
                 </div>
                 {Self::show_info_html()}
             </div>
@@ -275,7 +316,10 @@ impl App {
                     }).collect::<Html>()
                 }
                 <div class="entropy">
-                    {format!("{:.02} bits (expected {:.02} bits)", guess.entropy_delta, guess.expected_info)}
+                    {format!(
+                        "{:.02} bits (expected {:.02} bits)",
+                        guess.entropy_delta,
+                        guess.expected_info)}
                 </div>
             </div>
         }
@@ -287,21 +331,28 @@ impl App {
         html! {
             <div class="game-row active">
                 {
-                    self.filled_guess.iter().copied().zip(self.filled_colors.iter()).enumerate().map(|(idx, (chr, coloring))| html! {
-                        <div class={classes!(
-                            "game-cell",
-                            active_idx.filter(|a_idx| *a_idx == idx).map(|_| "active").unwrap_or("inactive"),
-                            chr.map(|_| "filled").unwrap_or("unfilled"),
-                            match coloring {
-                                Coloring::Excluded => "c-excluded",
-                                Coloring::Misplaced => "c-misplaced",
-                                Coloring::Correct => "c-correct",
-                            })}
-                            onclick={ctx.link().callback(move |_| Msg::UpdateColoring(idx))}
-                        >
-                            { chr.unwrap_or(' ') }
-                        </div>
-                    }).collect::<Html>()
+                    self.filled_guess
+                        .iter()
+                        .copied()
+                        .zip(self.filled_colors.iter())
+                        .enumerate()
+                        .map(|(idx, (chr, coloring))| html! {
+                            <div class={classes!(
+                                "game-cell",
+                                active_idx
+                                    .filter(|a_idx| *a_idx == idx)
+                                    .map(|_| "active")
+                                    .unwrap_or("inactive"),
+                                chr.map(|_| "filled").unwrap_or("unfilled"),
+                                match coloring {
+                                    Coloring::Excluded => "c-excluded",
+                                    Coloring::Misplaced => "c-misplaced",
+                                    Coloring::Correct => "c-correct",
+                                })}
+                                onclick={ctx.link().callback(move |_| Msg::UpdateColoring(idx))}>
+                                { chr.unwrap_or(' ') }
+                            </div>
+                        }).collect::<Html>()
                 }
                 <div class="buttons">
                     <div class={classes!(
@@ -345,7 +396,10 @@ impl App {
         debug_assert!(is_wordle_str(suggestion));
 
         let bs = suggestion.as_bytes();
-        for (src, target) in bs.iter().copied().zip(self.filled_guess.iter_mut()) {
+        for (src, target) in bs.iter()
+            .copied()
+            .zip(self.filled_guess.iter_mut())
+        {
             *target = Some(src as char);
         }
     }
@@ -412,7 +466,9 @@ impl App {
     fn show_footer_safe() -> Html {
         #[cfg(debug_assertions)]
         html! {
-            <div class="footer debug">{"DEBUG RELEASE"}</div>
+            <div class="footer debug">
+                {"Joey's Wordle Solver -- DEBUG BUILD -- NOT FOR PRODUCTION"}
+            </div>
         }
 
         #[cfg(not(debug_assertions))]

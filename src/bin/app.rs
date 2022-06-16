@@ -1,6 +1,10 @@
 #![recursion_limit = "1024"]
 
-use wordle_site::LOG_LEVEL;
+#[cfg(debug_assertions)]
+pub const LOG_LEVEL: log::Level = log::Level::Debug;
+
+#[cfg(not(debug_assertions))]
+pub const LOG_LEVEL: log::Level = log::Level::Info;
 
 #[global_allocator]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;

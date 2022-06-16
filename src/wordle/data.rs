@@ -5,13 +5,11 @@ use std::str::Utf8Error;
 use rust_embed::RustEmbed;
 use thiserror::Error;
 use lazy_static::lazy_static;
-use crate::wordle::data::LoadDataErr::EncodingError;
 
 pub const DATA_DIRECTORY: &str = "data/";
 pub const FREQUENCY_FILE_NAME: &str = "5word_frequencies.txt";
 pub const ALLOWED_WORDS_FILE_NAME: &str = "allowed_words.txt";
 pub const DEFAULT_STATE_DATA_FILE_NAME: &str = "default_state_data.txt";
-pub const N_RECOMMENDATIONS: usize = 32;
 
 lazy_static! {
     pub static ref DATA: Data = Data::read().expect("should have no failures reading data...");
@@ -239,5 +237,5 @@ fn retrieve_file_as_str(name: &str) -> Result<Option<String>, LoadDataErr> {
         return Ok(None);
     };
 
-    Ok(Some(std::str::from_utf8(&f.data).map_err(EncodingError)?.to_string()))
+    Ok(Some(std::str::from_utf8(&f.data).map_err(LoadDataErr::EncodingError)?.to_string()))
 }

@@ -5,6 +5,7 @@ use wordle_site::wordle::{DATA_DIRECTORY, DEFAULT_STATE_DATA_FILE_NAME, N_RECOMM
 
 fn main() {
     let at = format!("{}{}", DATA_DIRECTORY, DEFAULT_STATE_DATA_FILE_NAME);
+    // open the file to contain the cached default state data
     let mut f = File::options()
         .truncate(true)
         .create(true)
@@ -13,10 +14,18 @@ fn main() {
         .expect("should open");
 
     let start_at = Instant::now();
+    // compute the data we should put into the file, and write it...
     wordle_site::wordle::Solver::default()
         .compute_top_k_guesses::<{N_RECOMMENDATIONS}>()
         .for_each(|item| {
-            let line = format!("{} {} {} {}\n", item.word, item.score.abs, item.score.expected_info, item.score.weight);
+            // space seperated, according to the expected format documented in wordle/data.rs
+            let line = format!(
+                "{} {} {} {}\n",
+                item.word,
+                item.score.abs,
+                item.score.expected_info,
+                item.score.weight,
+            );
             f.write_all(line.as_bytes()).expect("should write OK");
         });
 
