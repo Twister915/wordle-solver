@@ -47,12 +47,23 @@ fn write_default_state_data() -> io::Result<()> {
     let (dur, out): (Duration, io::Result<()>) = timed(move || {
         // compute the data we should put into the file, and write it...
         for item in Solver::default().compute_top_k_guesses::<{N_RECOMMENDATIONS}>() {
-            write!(f, "{} {} {} {}\n", item.word, item.score.abs, item.score.expected_info, item.score.weight)?;
+            write!(
+                f,
+                "{} {} {} {}\n",
+                item.word,
+                item.score.abs,
+                item.score.expected_info,
+                item.score.weight,
+            )?;
         }
         Ok(())
     });
     out?;
-    eprintln!("done! wrote {} recommendations to {} in {:.2}s", N_RECOMMENDATIONS, at, dur.as_secs_f64());
+    eprintln!(
+        "done! wrote {} recommendations to {} in {:.2}s",
+        N_RECOMMENDATIONS,
+        at,
+        dur.as_secs_f64());
     Ok(())
 }
 
@@ -97,7 +108,9 @@ fn ordered_words<'a>(unordered: &'a Vec<String>, ordered: &'a Vec<String>) -> im
     ordered.iter()
         .map(|s| s.as_str())
         .filter(move |item| unordered_s.contains(*item))
-        .chain(unordered.iter().filter(move |item| !ordered_s.contains(item.as_str())).map(|v| v.as_str()))
+        .chain(unordered.iter()
+            .filter(move |item| !ordered_s.contains(item.as_str()))
+            .map(|v| v.as_str()))
 }
 
 fn read_unordered_allowed_words() -> io::Result<Vec<String>> {

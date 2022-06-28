@@ -252,7 +252,9 @@ impl Default for Solver<'static> {
             .map(|v| v.as_str())
             .collect();
 
-        let word_weights = compute_word_weights(&DATA.allowed_words).collect();
+        let word_weights =
+            compute_word_weights(&DATA.allowed_words)
+                .collect();
         let word_probabilities =
             compute_word_probabilities(&possible_words, &word_weights)
                 .collect();
