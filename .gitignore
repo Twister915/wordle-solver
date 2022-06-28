@@ -4,3 +4,4 @@
 .idea
 *.iml
 data/default_state_data.txt
+*_deploy*.sh
