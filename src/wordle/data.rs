@@ -176,6 +176,14 @@ fn retrieve_file_as_str(name: &str) -> Result<Option<String>, LoadDataErr> {
     let f: rust_embed::EmbeddedFile = if let Some(data) = RawData::get(name) {
         data
     } else {
+        #[cfg(not(target_arch="wasm32"))]
+        if let Ok(mut f) = std::fs::File::open(format!("{}{}", EMBED_DATA_DIRECTORY, name)) {
+            let mut out = String::default();
+            if std::io::Read::read_to_string(&mut f, &mut out).is_ok() {
+                return Ok(Some(out));
+            }
+        }
+
         return Ok(None);
     };
 

@@ -29,8 +29,8 @@ fn main() {
 }
 
 fn do_all() -> io::Result<()> {
-    write_default_state_data()?;
     write_ordered_allowed()?;
+    write_default_state_data()?;
     Ok(())
 }
 
@@ -57,6 +57,13 @@ fn write_default_state_data() -> io::Result<()> {
 }
 
 fn write_ordered_allowed() -> io::Result<()> {
+    let (dur, out) = timed(move || write_ordered_allowed_inner());
+    let (name, lines) = out?;
+    eprintln!("done! wrote {} words to {} in {:.2}s", lines, name, dur.as_secs_f64());
+    Ok(())
+}
+
+fn write_ordered_allowed_inner() -> io::Result<(String, usize)> {
     let unordered = read_unordered_allowed_words()?;
     let ordered = read_ordered_frequency_data_words()?;
     let to_write = ordered_words(&unordered, &ordered);
@@ -68,14 +75,19 @@ fn write_ordered_allowed() -> io::Result<()> {
         .write(true)
         .open(&at)?);
 
+    let mut count = 0;
     for item in to_write {
         write!(out, "{}\n", item)?;
+        count += 1;
     }
 
-    Ok(())
+    Ok((at, count))
 }
 
 fn ordered_words<'a>(unordered: &'a Vec<String>, ordered: &'a Vec<String>) -> impl Iterator<Item=&'a str> + 'a {
+    // we basically have to output the "unordered" list in the following order:
+    // * a given word must be in the same position as it is in "ordered" (if it is contained in "ordered")
+    // * all words in unordered not in ordered are emitted at the end in original order
     let mut unordered_s = HashSet::new();
     unordered_s.extend(unordered.iter().map(|i| i.as_str()));
 
