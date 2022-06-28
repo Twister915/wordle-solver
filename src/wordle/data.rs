@@ -23,61 +23,37 @@
  */
 
 use crate::wordle::prelude::*;
-use std::collections::HashMap;
-use std::num::{ParseFloatError, ParseIntError};
+use std::num::ParseFloatError;
 use std::str::Utf8Error;
 use rust_embed::RustEmbed;
 use thiserror::Error;
 use lazy_static::lazy_static;
 
+// Stores "input data" which is manually updated/configured
 pub const DATA_DIRECTORY: &str = "data/";
 pub const FREQUENCY_FILE_NAME: &str = "5word_frequencies.txt";
 pub const ALLOWED_WORDS_FILE_NAME: &str = "allowed_words.txt";
+
+// Stores "derived data" which is generated at build time using the data from the text-files above
+pub const EMBED_DATA_DIRECTORY: &str = "txt_data/";
 pub const DEFAULT_STATE_DATA_FILE_NAME: &str = "default_state_data.txt";
+pub const ORDERED_ALLOWED_WORDS_FILE_NAME: &str = "allowed_words_ord.txt";
 
 lazy_static! {
     pub static ref DATA: Data = Data::read().expect("should have no failures reading data...");
 }
 
 #[derive(RustEmbed)]
-#[folder = "data/"]
+#[folder = "txt_data/"]
 struct RawData;
 
 /// Holds all of the data represented by the static/embedded text files
 #[derive(Clone, Debug)]
 pub struct Data {
-    /// Word frequencies in english for relative ranking & weight/probability calculations
-    pub frequency_data: FrequencyData,
-    /// The list of words which can be guessed
+    /// The list of words which can be guessed, in rank order from most common to least common
     pub allowed_words: Vec<String>,
     /// Cached calculation of scored guesses in the "default state" (see game.rs for more details)
     pub default_state_data: Option<Vec<DefaultStateEntry>>,
-}
-
-#[derive(Clone, Debug)]
-pub struct FrequencyData {
-    /// All parsed lines from the frequency data file, in the order they were read
-    pub lines: Vec<FrequencyDataLine>,
-
-    /// Same data as lines but organized in a map so you can look up the data for each word quickly
-    pub by_word: HashMap<String, FrequencyDetail>,
-}
-
-#[derive(Clone, Debug)]
-pub struct FrequencyDataLine {
-    /// The word on this line
-    pub word: String,
-    /// The data associated with that word
-    pub detail: FrequencyDetail,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct FrequencyDetail {
-    /// How often this dataset claims to have seen this word
-    pub frequency: i64,
-    /// Rank=0 means most common word in english (according to this dataset), and higher ranks being
-    /// less common words.
-    pub rank: usize,
 }
 
 #[derive(Clone, Debug)]
@@ -94,12 +70,8 @@ pub struct DefaultStateEntry {
 
 #[derive(Error, Debug)]
 pub enum LoadDataErr {
-    #[error("missing frequency data file")]
-    MissingFrequencyDataFile,
     #[error("missing allowed words file")]
     MissingAllowedWordsFile,
-    #[error("failed to parse number '{0}'")]
-    BadFrequencyNumber(String, #[source] ParseIntError),
     #[error(transparent)]
     EncodingError(#[from] Utf8Error),
     #[error("malformed default data line '{0}'")]
@@ -113,11 +85,9 @@ pub enum LoadDataErr {
 impl Data {
     pub fn read() -> Result<Self, LoadDataErr> {
         let out = Self {
-            frequency_data: try_read_frequency_data()?,
             allowed_words: try_read_allowed_words()?,
             default_state_data: try_read_default_state_data()?,
         };
-        log::debug!("got frequency data for {} words", out.frequency_data.by_word.len());
         log::debug!("got {} allowed words from data file", out.allowed_words.len());
         if let Some(default_state) = &out.default_state_data {
             log::debug!("got {} default items", default_state.len());
@@ -126,62 +96,10 @@ impl Data {
     }
 }
 
-/// Parses frequency data text into FrequencyData
-fn try_read_frequency_data() -> Result<FrequencyData, LoadDataErr> {
-    let file_data = retrieve_file_as_str(FREQUENCY_FILE_NAME)?
-        .ok_or(LoadDataErr::MissingFrequencyDataFile)?;
-
-    const CAPACITY: usize = 100_000;
-    let mut lines = Vec::with_capacity(CAPACITY);
-    let mut by_word = HashMap::with_capacity(CAPACITY);
-    let mut pos = 0;
-
-    for line in file_data.lines() {
-        // frequency data is expected in the following format:
-        //
-        // word1 123123
-        // word2 3213
-        // ...
-        //
-        // We simply need to identify the word & the number following it (the "frequency").
-        if let Some((l, r)) = line.split_once(' ') {
-            // clean up the word
-            let word = normalize_wordle_word(l);
-            // verify it's a 5 letter word in the right case
-            if is_wordle_str(&word) {
-                // parse the number
-                let frequency = r.trim()
-                    .parse::<i64>()
-                    .map_err(|err|
-                        LoadDataErr::BadFrequencyNumber(r.to_string(), err))?;
-
-                // store the line!
-                let detail = FrequencyDetail {
-                    frequency,
-                    rank: pos,
-                };
-                pos += 1;
-
-                let line = FrequencyDataLine {
-                    word: word.clone(),
-                    detail,
-                };
-
-                lines.push(line);
-                by_word.insert(word, detail);
-            }
-        }
-    }
-
-    Ok(FrequencyData {
-        lines,
-        by_word,
-    })
-}
 
 /// Reads the allowed words text file. This is pretty simple: one allowed word per line.
 fn try_read_allowed_words() -> Result<Vec<String>, LoadDataErr> {
-    Ok(retrieve_file_as_str(ALLOWED_WORDS_FILE_NAME)?
+    Ok(retrieve_file_as_str(ORDERED_ALLOWED_WORDS_FILE_NAME)?
         .ok_or(LoadDataErr::MissingAllowedWordsFile)?
         .lines()
         .map(normalize_wordle_word)

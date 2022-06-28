@@ -252,10 +252,7 @@ impl Default for Solver<'static> {
             .map(|v| v.as_str())
             .collect();
 
-        let frequency_data = &DATA.frequency_data;
-        let word_weights =
-            compute_word_weights(&possible_words, frequency_data)
-                .collect();
+        let word_weights = compute_word_weights(&DATA.allowed_words).collect();
         let word_probabilities =
             compute_word_probabilities(&possible_words, &word_weights)
                 .collect();
@@ -691,7 +688,7 @@ fn iter_guesses(guesses: &[Option<Guess>]) -> impl Iterator<Item=&Guess> {
 ///
 /// Based on the 3blue1brown implementation, we base the weight on the word's rank.
 ///
-/// An arbitrary line called N_COMMON(=3200) is defined. Words with lower ranks (ie; more common
+/// An arbitrary line called N_COMMON(=2700) is defined. Words with lower ranks (ie; more common
 /// words with rank 0, 1, 2, etc) are considered common, whereas words with ranks higher than
 /// N_COMMON are considered uncommon.
 ///
@@ -713,11 +710,7 @@ fn iter_guesses(guesses: &[Option<Guess>]) -> impl Iterator<Item=&Guess> {
 /// depend on the size of the allowed_words and frequency data file. If you use a different dataset
 /// for word frequency it is recommended to experiment and tune these constants to this new dataset.
 ///
-fn compute_word_weights<'a: 'b, 'b>(
-    possible_guesses: &'b HashSet<&'a str>,
-    frequency_data: &'b FrequencyData,
-) -> impl Iterator<Item=(&'a str, WordleFloat)> + 'b
-{
+fn compute_word_weights(ordered_words: &Vec<String>) -> impl Iterator<Item=(&str, WordleFloat)> {
 
     // Implementation defines a few helper functions...
     //
@@ -726,12 +719,10 @@ fn compute_word_weights<'a: 'b, 'b>(
     // * compute_word_weight = do the computation, but default to MIN_WORD_WEIGHT
     //
     #[inline]
-    fn raw_compute_word_weight(guess: &str, frequency_data: &FrequencyData) -> Option<WordleFloat> {
-        const N_COMMON: WordleFloat = 3200.0;
+    fn raw_compute_word_weight(n_words: WordleFloat, rank: WordleFloat) -> Option<WordleFloat> {
+        const N_COMMON: WordleFloat = 2700.0;
         const WIDTH: WordleFloat = 5.7;
 
-        let n_words = frequency_data.by_word.len() as WordleFloat;
-        let rank = frequency_data.by_word.get(guess)?.rank as WordleFloat;
         let x = ((N_COMMON - rank) / n_words) * WIDTH;
         let weight = sigmoid(x);
 
@@ -743,12 +734,17 @@ fn compute_word_weights<'a: 'b, 'b>(
     }
 
     #[inline]
-    fn compute_word_weight(guess: &str, frequency_data: &FrequencyData) -> WordleFloat {
-        raw_compute_word_weight(guess, frequency_data).unwrap_or(MIN_WORD_WEIGHT)
+    fn compute_word_weight(n_words: WordleFloat, rank: usize) -> WordleFloat {
+        raw_compute_word_weight(n_words, rank as WordleFloat).unwrap_or(MIN_WORD_WEIGHT)
     }
 
-    possible_guesses.iter()
-        .map(|w| (*w, compute_word_weight(w, frequency_data)))
+    let n_words = ordered_words.len() as WordleFloat;
+
+    ordered_words
+        .iter()
+        .map(|w| w.as_str())
+        .enumerate()
+        .map(move |(idx, w)| (w, compute_word_weight(n_words, idx)))
 }
 
 ///
@@ -781,17 +777,21 @@ fn compute_default_state_guesses<'a: 'b, 'b>(
     supplied_data: &'b [DefaultStateEntry],
 ) -> impl Iterator<Item=ScoredCandidate<'a>> + 'b
 {
+    // go through the linear data from the text-file
     supplied_data.iter().map(|entry| {
+        // find the correct &str from the 'words' HashSet
         let word = *words.iter()
             .find(|item| *item == &entry.word)
             .expect("default state data should contain possible words only");
 
+        // create the score
         let score = Score {
             abs: entry.score,
             expected_info: entry.expected_info,
             weight: entry.weight,
         };
 
+        // combine
         ScoredCandidate {
             word,
             score,

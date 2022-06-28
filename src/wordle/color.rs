@@ -358,6 +358,17 @@ mod tests {
     #[test_case("spare", "scare", [Correct, Excluded, Correct, Correct, Correct])]
     #[test_case("share", "scare", [Correct, Excluded, Correct, Correct, Correct])]
     #[test_case("scare", "scare", [Correct, Correct, Correct, Correct, Correct])]
+    #[test_case("tales", "apron", [Excluded, Misplaced, Excluded, Excluded, Excluded])]
+    #[test_case("drain", "apron", [Excluded, Misplaced, Misplaced, Excluded, Correct])]
+    #[test_case("roman", "apron", [Misplaced, Misplaced, Excluded, Misplaced, Correct])]
+    #[test_case("apron", "apron", [Correct, Correct, Correct, Correct, Correct])]
+    #[test_case("lanes", "legal", [Correct, Misplaced, Excluded, Misplaced, Excluded])]
+    #[test_case("leary", "legal", [Correct, Correct, Misplaced, Excluded, Excluded])]
+    #[test_case("lemma", "legal", [Correct, Correct, Excluded, Excluded, Misplaced])]
+    #[test_case("legal", "legal", [Correct, Correct, Correct, Correct, Correct])]
+    #[test_case("arles", "ledge", [Excluded, Excluded, Misplaced, Misplaced, Excluded])]
+    #[test_case("elite", "ledge", [Misplaced, Misplaced, Excluded, Excluded, Correct])]
+    #[test_case("ledge", "ledge", [Correct, Correct, Correct, Correct, Correct])]
     fn test_coloring(guess: &str, answer: &str, expected_coloring: ColoringsArray) {
         assert_eq!(
             Colorings::with_guess_answer(guess, answer),

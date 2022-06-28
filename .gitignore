@@ -3,5 +3,5 @@
 .DS_Store
 .idea
 *.iml
-data/default_state_data.txt
+/txt_data/*.txt
 *_deploy*.sh
