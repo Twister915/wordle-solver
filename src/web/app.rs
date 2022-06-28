@@ -117,6 +117,19 @@ impl App {
     fn update_recommendations(&mut self) {
         self.recommendations.clear();
         self.recommendations.extend(self.solver.top_k_guesses::<{ N_RECOMMENDATIONS }>());
+        self.try_use_only_possible_guess();
+    }
+
+    fn try_use_only_possible_guess(&mut self) {
+        if !self.has_any_guess_state() {
+            if let Some(only) = self.recommendations.get(0) {
+                if self.recommendations.len() == 1 {
+                    let only_word = &*only.word;
+                    self.accept_suggestion(only_word);
+                    self.filled_colors = [Coloring::Correct; WORD_SIZE];
+                }
+            }
+        }
     }
 
     fn show_info_html() -> Html {
