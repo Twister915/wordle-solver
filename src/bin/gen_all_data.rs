@@ -41,8 +41,7 @@ fn write_default_state_data() -> io::Result<()> {
         .truncate(true)
         .create(true)
         .write(true)
-        .open(&at)
-        .expect("should open");
+        .open(&at)?;
 
     let (dur, out): (Duration, io::Result<()>) = timed(move || {
         // compute the data we should put into the file, and write it...
