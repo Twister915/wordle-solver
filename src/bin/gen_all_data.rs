@@ -47,9 +47,9 @@ fn write_default_state_data() -> io::Result<()> {
     let (dur, out): (Duration, io::Result<()>) = timed(move || {
         // compute the data we should put into the file, and write it...
         for item in Solver::default().compute_top_k_guesses::<{N_RECOMMENDATIONS}>() {
-            write!(
+            writeln!(
                 f,
-                "{} {} {} {}\n",
+                "{} {} {} {}",
                 item.word,
                 item.score.abs,
                 item.score.expected_info,
@@ -68,7 +68,7 @@ fn write_default_state_data() -> io::Result<()> {
 }
 
 fn write_ordered_allowed() -> io::Result<()> {
-    let (dur, out) = timed(move || write_ordered_allowed_inner());
+    let (dur, out) = timed(write_ordered_allowed_inner);
     let (name, lines) = out?;
     eprintln!("done! wrote {} words to {} in {:.2}s", lines, name, dur.as_secs_f64());
     Ok(())
@@ -88,14 +88,14 @@ fn write_ordered_allowed_inner() -> io::Result<(String, usize)> {
 
     let mut count = 0;
     for item in to_write {
-        write!(out, "{}\n", item)?;
+        writeln!(out, "{}", item)?;
         count += 1;
     }
 
     Ok((at, count))
 }
 
-fn ordered_words<'a>(unordered: &'a Vec<String>, ordered: &'a Vec<String>) -> impl Iterator<Item=&'a str> + 'a {
+fn ordered_words<'a>(unordered: &'a[String], ordered: &'a[String]) -> impl Iterator<Item=&'a str> + 'a {
     // we basically have to output the "unordered" list in the following order:
     // * a given word must be in the same position as it is in "ordered" (if it is contained in "ordered")
     // * all words in unordered not in ordered are emitted at the end in original order
@@ -127,7 +127,7 @@ fn read_ordered_frequency_data_words() -> io::Result<Vec<String>> {
     let f = fs::File::open(path)?;
     io::BufReader::new(f)
         .lines()
-        .map(|l| l.map(|l| l.split(' ').next().map(|w| normalize_wordle_word(w))))
+        .map(|l| l.map(|l| l.split(' ').next().map(normalize_wordle_word)))
         .filter_map(|l| match l {
             Ok(Some(v)) => Some(Ok(v)),
             Ok(None) => None,

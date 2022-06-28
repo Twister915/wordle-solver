@@ -586,6 +586,7 @@ impl<'a> Solver<'a> {
     ///
     fn expected_guess_info(&self, guess: &'a str) -> WordleFloat {
         // This array holds a float  for each coloring which tracks the probability of it occurring.
+        #[allow(clippy::unnecessary_cast)]
         let mut probabilities = [0.0 as WordleFloat; Colorings::NUM_STATES];
 
         // go through all possible answers that remain
@@ -611,6 +612,7 @@ impl<'a> Solver<'a> {
         debug_assert!((probabilities.iter().sum::<WordleFloat>() - 1.0).abs() < 0.0001);
 
         // determine the average information gained
+        #[allow(clippy::unnecessary_cast)]
         probabilities.iter()
             // filter non-positive data (aka the 0s) because log2(0) is undefined
             .filter(|v| *v > &(0.0 as WordleFloat))
