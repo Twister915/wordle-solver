@@ -444,11 +444,9 @@ impl<'a> Solver<'a> {
     /// todo document this
     ///
     pub fn remaining_entropy(&self) -> WordleFloat {
-        self.remaining_possibilities
-            .iter()
-            .copied()
-            .map(|word| self.word_probability_for(word))
-            .map(|item| item * -(item.log2()))
+        self.word_probabilities
+            .values()
+            .map(|v| v * -(v.log2()))
             .sum()
     }
 
