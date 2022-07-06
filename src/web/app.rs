@@ -117,19 +117,6 @@ impl App {
     fn update_recommendations(&mut self) {
         self.recommendations.clear();
         self.recommendations.extend(self.solver.top_k_guesses::<{ N_RECOMMENDATIONS }>());
-        self.try_use_only_possible_guess();
-    }
-
-    fn try_use_only_possible_guess(&mut self) {
-        if !self.has_any_guess_state() {
-            if let Some(only) = self.recommendations.get(0) {
-                if self.recommendations.len() == 1 {
-                    let only_word = &*only.word;
-                    self.accept_suggestion(only_word);
-                    self.filled_colors = [Coloring::Correct; WORD_SIZE];
-                }
-            }
-        }
     }
 
     fn show_info_html() -> Html {
@@ -458,6 +445,7 @@ impl App {
             self.solver.reset();
         }
         self.update_recommendations();
+        self.pre_fill_answer();
         true
     }
 
@@ -478,6 +466,31 @@ impl App {
     fn clear_guess(&mut self) {
         self.filled_guess = [None; WORD_SIZE];
         self.filled_colors = [Coloring::Excluded; WORD_SIZE];
+    }
+
+    fn pre_fill_answer(&mut self) {
+        if !self.solver.can_guess() {
+            return;
+        }
+
+        if let Some(only) = self.recommendations.get(0) {
+            if self.recommendations.len() == 1 {
+                let only_word = &*only.word;
+                self.accept_suggestion(only_word);
+                self.filled_colors = [Coloring::Correct; WORD_SIZE];
+                return;
+            }
+        }
+
+        if let Some(prev_guess) = self.solver.iter_guesses().last() {
+            for i in 0..WORD_SIZE {
+                let coloring = prev_guess.coloring.0[i];
+                if coloring == Coloring::Correct {
+                    self.filled_guess[i] = Some(prev_guess.word[i] as char);
+                    self.filled_colors[i] = coloring;
+                }
+            }
+        }
     }
 
     fn enable_reset_button(&self) -> bool {
