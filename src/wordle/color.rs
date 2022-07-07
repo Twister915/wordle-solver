@@ -23,6 +23,8 @@
  */
 
 use std::fmt::{Debug, Display, Formatter};
+#[cfg(test)]
+use std::iter::FusedIterator;
 use std::ops::{Index, IndexMut};
 use self::Coloring::*;
 use super::prelude::*;
@@ -302,6 +304,9 @@ impl Iterator for IterAllColorings {
 
 #[cfg(test)]
 impl ExactSizeIterator for IterAllColorings {}
+
+#[cfg(test)]
+impl FusedIterator for IterAllColorings {}
 
 #[cfg(test)]
 mod tests {
