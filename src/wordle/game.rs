@@ -671,17 +671,8 @@ fn is_guess_allowed_by_existing_guesses(guesses: &[Option<Guess>], guess: &str) 
 /// Helper which takes any slice of Option<Guess> and iterates through references to the Guesses
 /// that have been made.
 ///
-fn iter_guesses(guesses: &[Option<Guess>]) -> impl Iterator<Item=&Guess> {
-    guesses
-        .iter()
-        // convert &Option<Guess> to &Guess (two steps in one).
-        // .as_ref() does &Option<Guess> -> Option<&Guess> and filter_map skips None items
-        // and emits the inner value of Some items
-        .filter_map(|g| g.as_ref())
-        // the guesses is a fixed size array which contains Options. When we encounter the
-        // first None entry, we know that all remaining entries are also None, so we can
-        // stop iterating upon the first None (aka fuse the iterator).
-        .fuse()
+pub fn iter_guesses(guesses: &[Option<Guess>]) -> impl Iterator<Item=&Guess> {
+    OptionIter::new(guesses.iter().map(|v| v.as_ref()))
 }
 
 ///
@@ -798,4 +789,33 @@ fn compute_default_state_guesses<'a: 'b, 'b>(
             score,
         }
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::wordle::{Guess, iter_guesses};
+
+    #[test]
+    fn test_guess_iterator() {
+        use crate::wordle::Coloring::*;
+        let example_guess = Guess {
+            word: [b'a', b'a', b'a', b'a', b'a'],
+            coloring: [Excluded, Excluded, Excluded, Excluded, Excluded].into(),
+            expected_info: 0.0,
+            entropy_delta: 0.0
+        };
+
+        {
+            let guesses = [Some(example_guess.clone()), Some(example_guess.clone()), None, None, None, None];
+            let data: Vec<Guess> = iter_guesses(&guesses).cloned().collect();
+            let expected = [example_guess.clone(), example_guess.clone()];
+            assert_eq!(&data, &expected, "should have exactly two guesses");
+        }
+
+        {
+            let guesses = [None, Some(example_guess.clone()), Some(example_guess.clone()), None, None, None];
+            let count = iter_guesses(&guesses).count();
+            assert_eq!(count, 0, "even though there are some guesses, they must be in order, and the first is None therefore there are no guesses, so the count should be 0... got {}", count);
+        }
+    }
 }

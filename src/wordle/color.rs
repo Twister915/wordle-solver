@@ -143,11 +143,11 @@ impl Colorings {
 
         // GREEN pass
         for i in 0..WORD_SIZE {
-            let gc = &guess_bytes[i];
-            let ac = &answer_bytes[i];
+            let gc = guess_bytes[i];
+            let ac = answer_bytes[i];
 
             if gc == ac {
-                answer_letter_counts[letter_idx(*gc)] -= 1;
+                answer_letter_counts[letter_idx(gc)] -= 1;
                 out[i] = Correct;
             }
         }
@@ -155,8 +155,8 @@ impl Colorings {
         // YELLOW pass
         for i in 0..WORD_SIZE {
             if out[i] != Correct {
-                let gc = &guess_bytes[i];
-                let counter = &mut answer_letter_counts[letter_idx(*gc)];
+                let gc = guess_bytes[i];
+                let counter = &mut answer_letter_counts[letter_idx(gc)];
                 if *counter > 0 {
                     *counter -= 1;
                     out[i] = Misplaced;
