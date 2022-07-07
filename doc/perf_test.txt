@@ -1,0 +1,5 @@
+using 'quack' as example
+
+'s' = 1.17s
+'z' = 2.23s
+'3' = 1.02s
