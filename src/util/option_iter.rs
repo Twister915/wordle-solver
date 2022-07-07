@@ -37,25 +37,20 @@ where
     type Item = E;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match self.upstream.as_mut() {
-            Some(upstream) => match upstream.next() {
-                Some(Some(next)) => Some(next),
-                Some(None) | None => {
-                    self.upstream = None;
-                    None
-                }
-            },
-            None => None,
+        if let Some(next) = self.upstream.as_mut().and_then(|u| u.next()).flatten() {
+            Some(next)
+        } else {
+            self.upstream = None;
+            None
         }
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        (0, if let Some(upstream) = self.upstream.as_ref() {
-            let (_, max_size) = upstream.size_hint();
-            max_size
-        } else {
-            self.max_size
-        })
+        (0, self.upstream
+            .as_ref()
+            .map(|u| u.size_hint())
+            .map(|(_, max_size)| max_size)
+            .unwrap_or(self.max_size))
     }
 }
 
