@@ -402,11 +402,10 @@ impl<'a> Solver<'a> {
     /// Indicates whether or not the puzzle is solved (the final guess is all green)
     ///
     pub fn is_solved(&self) -> bool {
-        let n_guesses = self.num_guesses();
-        n_guesses > 0 &&
-            self.guesses[n_guesses - 1]
-                .map(|v| v.is_correct())
-                .unwrap_or(false)
+        self.iter_guesses()
+            .last()
+            .map(|g| g.is_correct())
+            .unwrap_or(false)
     }
 
     ///
