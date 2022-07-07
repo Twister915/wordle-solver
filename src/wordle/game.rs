@@ -702,7 +702,7 @@ pub fn iter_guesses(guesses: &[Option<Guess>]) -> impl Iterator<Item=&Guess> {
 /// depend on the size of the allowed_words and frequency data file. If you use a different dataset
 /// for word frequency it is recommended to experiment and tune these constants to this new dataset.
 ///
-fn compute_word_weights(ordered_words: &Vec<String>) -> impl Iterator<Item=(&str, WordleFloat)> {
+fn compute_word_weights(ordered_words: &[String]) -> impl Iterator<Item=(&str, WordleFloat)> {
 
     // Implementation defines a few helper functions...
     //
