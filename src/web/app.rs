@@ -56,7 +56,8 @@ impl Component for App {
             recommendations: Vec::default(),
             filled_guess: [None; WORD_SIZE],
             filled_colors: [Coloring::Excluded; WORD_SIZE],
-            keydown_listener: KeyListener::create(ctx.link().callback(Msg::OnKeyDown))
+            keydown_listener: KeyListener::create(ctx.link()
+                .callback(Msg::OnKeyDown))
                 .expect("should be able to attach key listener"),
         };
         out.update_recommendations();
@@ -165,8 +166,8 @@ impl App {
                 <p>
                     <>{"To suggest a "}</>
                     <em>{"good guess"}</em>
-                    <>{" we basically calculate how much 'information' is gained, on average, for a \
-                    given guess. A guess will receive a 'coloring' and these colorings eliminate \
+                    <>{" we basically calculate how much 'information' is gained, on average, for \
+                    a given guess. A guess will receive a 'coloring' and these colorings eliminate \
                     possible answers. A 'high information' coloring is one where the coloring \
                     eliminates the most candidate answers. Guesses which often produce high \
                     information colorings are ranked highly, and suggested to the user."}</>
@@ -425,7 +426,14 @@ impl App {
         }
     }
 
-    fn wordle_button(ctx: &Context<Self>, c: &'static str, emoji: &'static str, enabled: bool, msg: Msg) -> Html {
+    fn wordle_button(
+        ctx: &Context<Self>,
+        c: &'static str,
+        emoji: &'static str,
+        enabled: bool,
+        msg: Msg,
+    ) -> Html
+    {
         html! {
             <div
                 class={classes!("button", c, if enabled { "enabled" } else { "disabled" })}
@@ -436,11 +444,21 @@ impl App {
     }
 
     fn show_reset_button(&self, ctx: &Context<Self>) -> Html {
-        Self::wordle_button(ctx, "reset-button", "❌", self.enable_reset_button(), Msg::ClearGuess)
+        Self::wordle_button(
+            ctx,
+            "reset-button",
+            "❌",
+            self.enable_reset_button(),
+            Msg::ClearGuess)
     }
 
     fn show_confirm_button(&self, ctx: &Context<Self>) -> Html {
-        Self::wordle_button(ctx, "confirm-button", "✔️", self.enable_confirm_button(), Msg::MakeGuess)
+        Self::wordle_button(
+            ctx,
+            "confirm-button",
+            "✔️",
+            self.enable_confirm_button(),
+            Msg::MakeGuess)
     }
 
     fn show_wordle_empty_row(&self) -> Html {
@@ -647,10 +665,10 @@ impl App {
 
             Some(idx) => idx,
 
-            // if next_char_idx returns None that means the guess is filled (all 5 chars are entered)
+            // if next_char_idx returns None, the guess is filled (all 5 chars are entered)
             // and we need to clear the last character
             None => self.filled_guess.len(),
-        } - 1; // we subtract 1 from the next_chr_idx because this index is *after* the last character
+        } - 1; // we subtract 1 from the next_chr_idx because this index is after the last filled character
 
         self.filled_guess[idx_clear] = None;
         event.prevent_default();
