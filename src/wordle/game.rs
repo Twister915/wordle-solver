@@ -101,7 +101,9 @@ impl Guess {
     /// coloring at position 0 for the letter 'q' but the other uses 'a' in position 0 then that
     /// guess is not allowed.
     pub fn allows_other_guess(&self, other: &str) -> bool {
-        debug_assert!(is_wordle_str(other));
+        if !is_wordle_str(other) {
+            return false;
+        }
 
         // You shouldn't make the same guess twice! Technically you could but then this bot wouldn't
         // seem very smart lol
@@ -198,9 +200,12 @@ impl Guess {
     }
 
     pub fn is_guess_same(&self, other: &str) -> bool {
-        debug_assert!(is_wordle_str(other));
-        let ob = other.as_bytes();
-        self.word.iter().enumerate().all(|(i, c)| ob[i] == *c)
+        if is_wordle_str(other) {
+            let ob = other.as_bytes();
+            self.word.iter().enumerate().all(|(i, c)| ob[i] == *c)
+        } else {
+            false
+        }
     }
 }
 

@@ -484,7 +484,7 @@ impl App {
     }
 
     fn accept_suggestion(&mut self, suggestion: &str) {
-        debug_assert!(is_wordle_str(suggestion));
+        assert!(is_wordle_str(suggestion));
 
         let bs = suggestion.as_bytes();
         for (src, target) in bs.iter()

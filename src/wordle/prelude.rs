@@ -56,7 +56,7 @@ pub fn count_letters(word: &str) -> [usize; ALPHABET_SIZE] {
 /// The output is indexed by the position of the letter in the alphabet... like 'a' = 0,
 /// 'b' = 1, etc...
 pub fn count_letters_bytes(word: &[u8]) -> [usize; ALPHABET_SIZE] {
-    debug_assert!(is_wordle_str_bytes(word));
+    assert!(is_wordle_str_bytes(word));
     let mut out = [0; ALPHABET_SIZE];
     for i in 0..WORD_SIZE {
         out[letter_idx(word[i])] += 1;

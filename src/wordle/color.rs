@@ -135,8 +135,8 @@ impl Colorings {
     /// * performing a "YELLOW pass" to mark all misplaced letters (based on the remaining budget for each letter)
     ///
     pub fn with_guess_answer(guess: &str, answer: &str) -> Self {
-        debug_assert!(is_wordle_str(answer));
-        debug_assert!(is_wordle_str(guess));
+        assert!(is_wordle_str(answer));
+        assert!(is_wordle_str(guess));
 
         let mut out = Self::default();
         let mut answer_letter_counts = count_letters(answer);
