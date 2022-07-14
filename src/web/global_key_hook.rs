@@ -27,6 +27,7 @@ use wasm_bindgen::prelude::*;
 use yew::prelude::*;
 use std::fmt;
 
+#[derive(Clone)]
 pub struct KeyEvent {
     event: Box<KeyboardEvent>,
     code: String,

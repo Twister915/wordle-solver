@@ -37,7 +37,7 @@ pub struct App {
     keydown_listener: KeyListener,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Msg {
     PickRecommendation(String),
     UpdateColoring(usize),
@@ -72,14 +72,18 @@ impl Component for App {
                 true
             },
             UpdateColoring(idx) => {
-                let src = &mut self.filled_colors[idx];
-                let mut next_coloring = match *src {
-                    Coloring::Excluded => Coloring::Misplaced,
-                    Coloring::Misplaced => Coloring::Correct,
-                    Coloring::Correct => Coloring::Excluded,
-                };
-                std::mem::swap(src, &mut next_coloring);
-                true
+                if self.solver.can_guess() {
+                    let src = &mut self.filled_colors[idx];
+                    let mut next_coloring = match *src {
+                        Coloring::Excluded => Coloring::Misplaced,
+                        Coloring::Misplaced => Coloring::Correct,
+                        Coloring::Correct => Coloring::Excluded,
+                    };
+                    std::mem::swap(src, &mut next_coloring);
+                    true
+                } else {
+                    false
+                }
             }
             MakeGuess => self.make_guess(),
             ClearGuess => {
@@ -191,13 +195,15 @@ impl App {
     fn show_recommendation_html(&self, ctx: &Context<Self>) -> Html {
         html! {
             <div class="suggestions">
-                <div class="title">{format!("Suggestions ({})", self.recommendations.len())}</div>
-                { self.show_recommendation_details() }
-                {
-                    if let Some(top_guess) = self.recommendations.get(0) {
-                        Self::show_recommendation_instructions(ctx, top_guess.word)
-                    } else {
-                        html! {<></> }
+                <div class="title">{format!("Suggestions ({})", self.num_suggestions())}</div>
+                if self.solver.can_guess() {
+                    { self.show_recommendation_details() }
+                    {
+                        if let Some(top_guess) = self.recommendations.get(0) {
+                            Self::show_recommendation_instructions(ctx, top_guess.word)
+                        } else {
+                            html! {<></> }
+                        }
                     }
                 }
                 { self.show_recommendation_list(ctx) }
@@ -220,7 +226,7 @@ impl App {
     }
 
     fn possibilities_remaining_msg(&self) -> String {
-        let remaining = self.solver.num_remaining_possibilities();
+        let remaining = self.num_suggestions();
         let total = self.solver.num_total_possibilities();
         let count_str = if remaining == total {
             total.to_string()
@@ -229,6 +235,14 @@ impl App {
         };
 
         format!("{} possible words remaining...", count_str)
+    }
+
+    fn num_suggestions(&self) -> usize {
+        if self.solver.can_guess() {
+            self.solver.num_remaining_possibilities()
+        } else {
+            0
+        }
     }
 
     fn show_recommendation_instructions(ctx: &Context<Self>, top_guess: &'static str) -> Html {
@@ -249,13 +263,28 @@ impl App {
     }
 
     fn show_recommendation_list(&self, ctx: &Context<Self>) -> Html {
+        let empty_list = !self.solver.can_guess() || self.recommendations.is_empty();
         html! {
             <div class="list">
-                {
-                    self.recommendations.iter()
+                if empty_list {
+                    <div class="empty-msg">
+                        <>{"This game is complete, press the X button to reset, or "}</>
+                        <span
+                            class="click-text"
+                            onclick={ ctx
+                                .link()
+                                .callback(move |_|
+                                    Msg::ClearGuess)}>
+                            {"click here"}
+                        </span>
+                        <>{" to reset..."}</>
+                    </div>
+                } else {
+                    {self.recommendations
+                        .iter()
                         .enumerate()
                         .map(|(idx, item)| Self::show_recommendation_item(idx, item, ctx))
-                        .collect::<Html>()
+                        .collect::<Html>()}
                 }
             </div>
         }
@@ -267,14 +296,12 @@ impl App {
         ctx: &Context<Self>,
     ) -> Html
     {
-        let word_cloned = item.word;
         html! {
             <div
                 class="item"
                 onclick={ ctx
                     .link()
-                    .callback(move |_|
-                        Msg::PickRecommendation(word_cloned.to_string()))}>
+                    .callback(|_| Msg::PickRecommendation(item.word.to_string()))}>
                 <div class="ordinal">{format!("#{:02}", idx + 1)}</div>
                 <div class="word">{&item.word}</div>
                 <div class="details">
@@ -305,8 +332,11 @@ impl App {
                     <>{" by suggesting guesses & updating as you play!"}</>
                 </p>
                 <div class="game">
-                    {(0..NUM_TURNS).map(|idx|
-                        self.show_wordle_row(ctx, &guesses, idx)).collect::<Html>()}
+                    {
+                        (0..NUM_TURNS)
+                            .map(|idx| self.show_wordle_row(ctx, &guesses, idx))
+                            .collect::<Html>()
+                    }
                 </div>
                 {Self::show_info_html()}
             </div>
@@ -315,15 +345,16 @@ impl App {
 
     fn show_wordle_row(&self, ctx: &Context<Self>, guesses: &[&Guess], idx: usize) -> Html {
         if let Some(guess) = guesses.get(idx) {
-            self.show_wordle_guessed_row(guess)
-        } else if idx == guesses.len() && self.solver.can_guess() {
+            self.show_wordle_guessed_row(ctx, guess, idx)
+        } else if idx == guesses.len() {
             self.show_wordle_active_row(ctx)
         } else {
             self.show_wordle_empty_row()
         }
     }
 
-    fn show_wordle_guessed_row(&self, guess: &Guess) -> Html {
+    fn show_wordle_guessed_row(&self, ctx: &Context<Self>, guess: &Guess, index: usize) -> Html {
+        let show_reset = index == NUM_TURNS - 1;
         html! {
             <div class="game-row filled inactive">
                 {
@@ -339,6 +370,11 @@ impl App {
                         )}>{chr as char}</div>
                     }).collect::<Html>()
                 }
+                if show_reset {
+                    <div class="buttons">
+                        {self.show_reset_button(ctx)}
+                    </div>
+                }
                 <div class="entropy">
                     {format!(
                         "{:.02} bits (expected {:.02} bits)",
@@ -351,9 +387,10 @@ impl App {
 
     fn show_wordle_active_row(&self, ctx: &Context<Self>) -> Html {
         let active_idx = self.next_chr_idx();
+        let can_play = self.solver.can_guess();
         log::debug!("active_idx = {:?}", &active_idx);
         html! {
-            <div class="game-row active">
+            <div class={classes!("game-row", if can_play { "active" } else { "empty inactive" })}>
                 {
                     self.filled_guess
                         .iter()
@@ -379,19 +416,31 @@ impl App {
                         }).collect::<Html>()
                 }
                 <div class="buttons">
-                    <div class={classes!(
-                        "button",
-                        "reset-button",
-                        if self.enable_reset_button() { "enabled" } else { "disabled" },
-                    )} onclick={ctx.link().callback(move |_| Msg::ClearGuess)}>{"❌"}</div>
-                    <div class={classes!(
-                        "button",
-                        "confirm-button",
-                        if self.enable_confirm_button() { "enabled" } else { "disabled" },
-                    )} onclick={ctx.link().callback(move |_| Msg::MakeGuess)}>{"✔️"}</div>
+                    {self.show_reset_button(ctx)}
+                    if can_play {
+                        {self.show_confirm_button(ctx)}
+                    }
                 </div>
             </div>
         }
+    }
+
+    fn wordle_button(ctx: &Context<Self>, c: &'static str, emoji: &'static str, enabled: bool, msg: Msg) -> Html {
+        html! {
+            <div
+                class={classes!("button", c, if enabled { "enabled" } else { "disabled" })}
+                onclick={ctx.link().callback(move|_| msg.clone())}>
+                {emoji}
+            </div>
+        }
+    }
+
+    fn show_reset_button(&self, ctx: &Context<Self>) -> Html {
+        Self::wordle_button(ctx, "reset-button", "❌", self.enable_reset_button(), Msg::ClearGuess)
+    }
+
+    fn show_confirm_button(&self, ctx: &Context<Self>) -> Html {
+        Self::wordle_button(ctx, "confirm-button", "✔️", self.enable_confirm_button(), Msg::MakeGuess)
     }
 
     fn show_wordle_empty_row(&self) -> Html {
@@ -429,11 +478,19 @@ impl App {
     }
 
     fn make_guess(&mut self) -> bool {
+        if !self.solver.can_guess() {
+            return false;
+        }
+
         let guess_str = if let Some(g) = self.guess_str() {
             g
         } else {
             return false;
         };
+
+        if !self.solver.is_guess_permitted(&guess_str) {
+            return false;
+        }
 
         let colorings = Colorings(self.filled_colors);
         if let Err(err) = self.solver.make_guess(&guess_str, colorings) {
@@ -441,9 +498,9 @@ impl App {
         }
 
         self.clear_guess();
-        if !self.solver.can_guess() {
-            self.solver.reset();
-        }
+        // if !self.solver.can_guess() {
+        //     self.solver.reset();
+        // }
         self.update_recommendations();
         self.pre_fill_answer();
         true
@@ -541,6 +598,10 @@ impl App {
     }
 
     fn handle_keydown(&mut self, event: &mut KeyEvent) -> bool {
+        if !self.solver.can_guess() {
+            return false;
+        }
+
         if event.is_control_key() {
             return false;
         }

@@ -126,49 +126,49 @@ html, body {
         .game-cell {
           cursor: pointer;
         }
+      }
 
-        .buttons {
-          display: flex;
-          margin-left: 8px;
+      .buttons {
+        display: flex;
+        margin-left: 8px;
 
-          .button {
-            display: inline-flex;
-            justify-content: center;
-            align-items: center;
-            width: $wh;
-            height: $wh;
-            margin-right: 3px;
-            border-radius: 3px;
-            box-sizing: border-box;
-            font-size: 2rem;
-            font-weight: bold;
-            user-select: none;
-            transition: background-color 0.25s ease-in-out;
+        .button {
+          display: inline-flex;
+          justify-content: center;
+          align-items: center;
+          width: $wh;
+          height: $wh;
+          margin-right: 3px;
+          border-radius: 3px;
+          box-sizing: border-box;
+          font-size: 2rem;
+          font-weight: bold;
+          user-select: none;
+          transition: background-color 0.25s ease-in-out;
 
-            &.enabled {
-              cursor: pointer;
+          &.enabled {
+            cursor: pointer;
 
-              @mixin button-coloring($c) {
-                background-color: $c;
-                &:hover {
-                  background-color: lighten($c, 20%);
-                }
-              }
-
-              &.reset-button {
-                @include button-coloring(#4a4a4a);
-              }
-
-              &.confirm-button {
-                @include button-coloring(#538d4e);
+            @mixin button-coloring($c) {
+              background-color: $c;
+              &:hover {
+                background-color: lighten($c, 20%);
               }
             }
 
-            &.disabled {
-              cursor: not-allowed;
-              background-color: #c6c6c6;
-              filter: grayscale(1);
+            &.reset-button {
+              @include button-coloring(#4a4a4a);
             }
+
+            &.confirm-button {
+              @include button-coloring(#538d4e);
+            }
+          }
+
+          &.disabled {
+            cursor: not-allowed;
+            background-color: #c6c6c6;
+            filter: grayscale(1);
           }
         }
       }

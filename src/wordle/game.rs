@@ -315,6 +315,10 @@ impl<'a> Solver<'a> {
             return Err(SolverErr::InvalidGuess(guess));
         }
 
+        if !self.is_guess_permitted(&guess) {
+            return Err(SolverErr::InvalidGuess(guess));
+        }
+
         // copy guess characters to a fixed size byte array (we cannot use .as_bytes() because it's
         // a fixed size array [u8; WORD_SIZE(5)], not a &[u8])
         let mut word = [0u8; WORD_SIZE];
