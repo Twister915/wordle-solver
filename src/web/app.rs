@@ -91,8 +91,7 @@ impl Component for App {
                 if self.enable_reset_button() {
                     let reset_entire_game = !self.has_any_guess_state();
                     if reset_entire_game {
-                        self.solver.reset();
-                        self.update_recommendations();
+                        self.reset();
                     }
 
                     self.clear_guess();
@@ -516,9 +515,6 @@ impl App {
         }
 
         self.clear_guess();
-        // if !self.solver.can_guess() {
-        //     self.solver.reset();
-        // }
         self.update_recommendations();
         self.pre_fill_answer();
         true
@@ -548,6 +544,7 @@ impl App {
             return;
         }
 
+        // if there's literally just one recommendation, then it's the right answer
         if let Some(only) = self.recommendations.get(0) {
             if self.recommendations.len() == 1 {
                 let only_word = &*only.word;
@@ -557,6 +554,7 @@ impl App {
             }
         }
 
+        // copy forward green squares from the previous guess, if there are any guesses
         if let Some(prev_guess) = self.solver.iter_guesses().last() {
             for i in 0..WORD_SIZE {
                 let coloring = prev_guess.coloring.0[i];
@@ -616,10 +614,6 @@ impl App {
     }
 
     fn handle_keydown(&mut self, event: &mut KeyEvent) -> bool {
-        if !self.solver.can_guess() {
-            return false;
-        }
-
         if event.is_control_key() {
             return false;
         }
@@ -637,11 +631,17 @@ impl App {
                     false
                 }
             },
-            _ => false,
+            other => {
+                log::debug!("unhandled key {}", other);
+                false
+            },
         }
     }
 
     fn handle_letter_entered(&mut self, event: &mut KeyEvent, letter: char) -> bool {
+        if !self.solver.can_guess() {
+            return false;
+        }
         // next_chr_idx = where the next character should go
         match self.next_chr_idx() {
             // None means that the word is completely filled & we have nowhere to put the character
@@ -649,6 +649,17 @@ impl App {
 
             Some(idx) => {
                 self.filled_guess[idx] = Some(letter);
+
+                // if this character is the same as the previous guess & previously it was correct,
+                // then we can automatically label this as green
+                if let Some(previous) = self.solver.iter_guesses().last() {
+                    let p_coloring = previous.coloring[idx];
+                    let p_letter = previous.word[idx] as char;
+
+                    if p_coloring == Coloring::Correct && p_letter == letter {
+                        self.filled_colors[idx] = Coloring::Correct;
+                    }
+                }
                 event.prevent_default();
                 true
             }
@@ -656,6 +667,9 @@ impl App {
     }
 
     fn handle_backspace(&mut self, event: &mut KeyEvent) -> bool {
+        if !self.solver.can_guess() {
+            return false;
+        }
         // figure out what index to clear...
         // next_chr_idx is the index where a new character would go
         let idx_clear = match self.next_chr_idx() {
@@ -671,16 +685,30 @@ impl App {
         } - 1; // we subtract 1 from the next_chr_idx because this index is after the last filled character
 
         self.filled_guess[idx_clear] = None;
+        self.filled_colors[idx_clear] = Coloring::Excluded;
         event.prevent_default();
         true
     }
 
     fn handle_enter(&mut self, event: &mut KeyEvent) -> bool {
-        if self.make_guess() {
-            event.prevent_default();
+        // enter will either... submit the current answer (if possible), or if the game is over,
+        // it will reset the game (think of it as a shortcut to hitting the X button)
+        let out = self.make_guess() || if !self.solver.can_guess() {
+            self.reset();
             true
         } else {
             false
+        };
+
+        if out {
+            event.prevent_default();
         }
+
+        out
+    }
+
+    fn reset(&mut self) {
+        self.solver.reset();
+        self.update_recommendations();
     }
 }
