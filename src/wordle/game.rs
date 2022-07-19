@@ -283,7 +283,7 @@ impl Default for Solver<'static> {
 }
 
 #[derive(Error, Debug, Clone, PartialEq, Eq)]
-pub enum SolverErr {
+pub enum SolverErr<'a> {
     #[error("no possible words remain")]
     NoCandidates,
     #[error("no turns remaining")]
@@ -291,7 +291,7 @@ pub enum SolverErr {
     #[error("the wordle puzzle is already solved")]
     AlreadySolved,
     #[error("provided guess is not valid")]
-    InvalidGuess(String),
+    InvalidGuess(&'a str),
 }
 
 impl<'a> Solver<'a> {
@@ -299,7 +299,19 @@ impl<'a> Solver<'a> {
     /// Add a guess to the solver so that it makes new recommendations based on the new information
     /// provided by the user.
     ///
-    pub fn make_guess(&mut self, guess: &str, coloring: Colorings) -> Result<(), SolverErr> {
+    /// 's = solver borrow lifetime
+    /// 'g = guess borrow lifetime
+    ///
+    /// 'g outlives 's
+    ///
+    pub fn make_guess<'s, 'g>(
+        &'s mut self,
+        guess: &'g str,
+        coloring: Colorings,
+    ) -> Result<(), SolverErr<'g>>
+        where 'g: 's
+    {
+        let guess = guess.trim();
         // if we're solved, we cannot make a guess
         if self.is_solved() {
             return Err(SolverErr::AlreadySolved);
@@ -315,12 +327,7 @@ impl<'a> Solver<'a> {
         let next_guess_idx = self.next_guess_idx().ok_or(SolverErr::TurnsExhausted)?;
 
         // ensure the provided guess is a 5 letter word in lowercase ascii
-        let guess = normalize_wordle_word(guess);
-        if !is_wordle_str(&guess) {
-            return Err(SolverErr::InvalidGuess(guess));
-        }
-
-        if !self.is_guess_permitted(&guess) {
+        if !is_wordle_str(&guess) || !self.is_guess_permitted(&guess) {
             return Err(SolverErr::InvalidGuess(guess));
         }
 
