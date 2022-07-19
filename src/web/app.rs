@@ -147,19 +147,15 @@ impl App {
                 <h2>{"Methodology"}</h2>
                 <p>
                     <>{"Math based on "}</>
-                    <a
-                        href="https://www.youtube.com/watch?v=v68zYyaEmEA"
-                        target="_blank"
-                        class="click-text">
-                        {"Grant Sanderson (3blue1brown)'s Video"}
-                    </a>
+                    { Self::show_link(
+                        "https://www.youtube.com/watch?v=v68zYyaEmEA",
+                        "Grant Sanderson (3blue1brown)'s Video")
+                    }
                     <>{" about using "}</>
-                    <a
-                        href="https://en.wikipedia.org/wiki/Entropy_(information_theory)"
-                        target="_blank"
-                        class="click-text">
-                        {"Information Theory"}
-                    </a>
+                    { Self::show_link(
+                        "https://en.wikipedia.org/wiki/Entropy_(information_theory)",
+                        "Information Theory")
+                    }
                     <>{" to solve Wordle."}</>
                 </p>
                 <p>
@@ -180,12 +176,7 @@ impl App {
                 <p>
                     <>{"This summary is incomplete and oversimplified and it is highly recommended \
                     you watch the "}</>
-                    <a
-                        href="https://www.youtube.com/watch?v=v68zYyaEmEA"
-                        target="_blank"
-                        class="click-text">
-                        {"video"}
-                    </a>
+                    { Self::show_link("https://www.youtube.com/watch?v=v68zYyaEmEA", "video" )}
                     <>{" which visualizes the scoring computation quite well."}</>
                 </p>
             </div>
@@ -323,12 +314,7 @@ impl App {
                 </h1>
                 <p class="tagline">
                     <>{"Solves "}</>
-                    <a
-                        href="https://www.nytimes.com/games/wordle/index.html"
-                        target="_blank"
-                        class="click-text">
-                        {"Wordle"}
-                    </a>
+                    {Self::show_link("https://www.nytimes.com/games/wordle/index.html", "Wordle")}
                     <>{" by suggesting guesses & updating as you play!"}</>
                 </p>
                 <div class="game">
@@ -603,13 +589,21 @@ impl App {
         html! {
             <div class="footer">
                 <>{format!("Joey's Wordle Solver -- v{} -- built with ", crate::GIT_VERSION)}</>
-                <a href="https://www.rust-lang.org/" target="_blank" class="click-text">{"Rust"}</a>
+                {Self::show_link("https://www.rust-lang.org/", "Rust")}
                 <>{" and "}</>
-                <a href="https://yew.rs/" target="_blank" class="click-text">{"Yew"}</a>
+                {Self::show_link("https://yew.rs/", "Yew")}
                 <>{". Available on "}</>
                 <span class="coming-soon">{"GitHub"}</span>
                 <>{" (coming soon!)."}</>
             </div>
+        }
+    }
+
+    fn show_link(target: &'static str, text: &'static str) -> Html {
+        html! {
+            <a href={target} target="_blank" rel="noopener noreferrer" class="click-text">
+                {text}
+            </a>
         }
     }
 

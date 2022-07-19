@@ -27,6 +27,8 @@ use wasm_bindgen::prelude::*;
 use yew::prelude::*;
 use std::fmt;
 
+const KEYDOWN_NAME: &str = "keydown";
+
 #[derive(Clone)]
 pub struct KeyEvent {
     event: Box<KeyboardEvent>,
@@ -60,7 +62,7 @@ impl KeyListener {
         }) as Box<dyn FnMut(_)>);
 
         let cb_ref = callback.as_ref().unchecked_ref();
-        if let Ok(()) = window.add_event_listener_with_callback("keydown", cb_ref) {
+        if let Ok(()) = window.add_event_listener_with_callback(KEYDOWN_NAME, cb_ref) {
             log::debug!("registered global keydown listener");
             Some(Self { callback })
         } else {
@@ -74,7 +76,7 @@ impl Drop for KeyListener {
         // try to deregister the listener
         if let Some(window) = web_sys::window() {
             let cb_ref = self.callback.as_ref().unchecked_ref();
-            if let Ok(()) = window.remove_event_listener_with_callback("keydown", cb_ref) {
+            if let Ok(()) = window.remove_event_listener_with_callback(KEYDOWN_NAME, cb_ref) {
                 log::debug!("de-registered keydown callback");
                 return;
             }
