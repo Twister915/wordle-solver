@@ -247,7 +247,7 @@ impl Iterator for IterAllColorings {
     type Item = Colorings;
 
     fn next(&mut self) -> Option<Self::Item> {
-        return if let Some(cur) = self.next {
+        if let Some(cur) = self.next {
             let mut next = cur;
             // basically... try to flip the right-most color through these three values:
             //  excluded -> misplaced -> correct
@@ -294,7 +294,7 @@ impl Iterator for IterAllColorings {
             Some(cur)
         } else {
             None
-        };
+        }
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
