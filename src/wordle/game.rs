@@ -105,10 +105,12 @@ impl Guess {
             return false;
         }
 
-        // You shouldn't make the same guess twice! Technically you could but then this bot wouldn't
-        // seem very smart lol
-        if self.is_guess_same(other) {
-            return false;
+        let is_same = self.is_guess_same(other);
+        let is_self_correct = self.is_correct();
+        // if the 'other' is same as self.guess, we only return true if it's the correct answer
+        // if self is the correct answer, must return early and only return true if we're the correct answer
+        if is_same || is_self_correct {
+            return is_same && is_self_correct;
         }
 
         // count up how many of each letter we expect to see based on our own coloring
