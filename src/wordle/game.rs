@@ -595,7 +595,7 @@ impl<'a> Solver<'a> {
     /// The probability of seeing a coloring is calculated first, then the info gained by that
     /// coloring is log2 of that probability. For example, if the probability of a coloring is 0.5,
     /// that means half the search space produces that coloring (and the other half is eliminated)
-    /// giving us -log2(0.5) = 2 bits of information with a 0.5 probability.
+    /// giving us -log2(0.5) = 1 bit of information with a 0.5 probability.
     ///
     /// The "expected info" is therefore the sum of p * -p.log2() for all colorings.
     ///
