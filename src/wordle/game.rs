@@ -22,10 +22,10 @@
  * SOFTWARE.
  */
 
+use super::{color::*, data::*, prelude::*};
 use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 use thiserror::Error;
-use super::{prelude::*, color::*, data::*};
 
 ///
 /// The default kind of Solver is a Solver<'static> because the strings being referenced are from
@@ -254,23 +254,16 @@ impl Score {
 /// Implementation of Default uses the embedded data to construct a solver
 impl Default for Solver<'static> {
     fn default() -> Self {
-        let possible_words = DATA.allowed_words
-            .iter()
-            .map(|v| v.as_str())
-            .collect();
+        let possible_words = DATA.allowed_words.iter().map(|v| v.as_str()).collect();
 
-        let word_weights =
-            compute_word_weights(&DATA.allowed_words)
-                .collect();
+        let word_weights = compute_word_weights(&DATA.allowed_words).collect();
         let word_probabilities =
-            compute_word_probabilities(&possible_words, &word_weights)
-                .collect();
+            compute_word_probabilities(&possible_words, &word_weights).collect();
         let remaining_possibilities = possible_words.clone();
-        let default_state_guesses = DATA.default_state_data
+        let default_state_guesses = DATA
+            .default_state_data
             .as_ref()
-            .map(|dsd|
-                compute_default_state_guesses(&possible_words, dsd)
-                    .collect());
+            .map(|dsd| compute_default_state_guesses(&possible_words, dsd).collect());
 
         Self {
             possible_words,
@@ -311,7 +304,8 @@ impl<'a> Solver<'a> {
         guess: &'g str,
         coloring: Colorings,
     ) -> Result<(), SolverErr<'g>>
-        where 'g: 's
+    where
+        'g: 's,
     {
         let guess = guess.trim();
         // if we're solved, we cannot make a guess
@@ -375,8 +369,8 @@ impl<'a> Solver<'a> {
     ///
     fn recompute_possibilities(&mut self) {
         // retain removes items from the set when the closure returns false
-        self.remaining_possibilities.retain(|word|
-            is_guess_allowed_by_existing_guesses(&self.guesses, *word))
+        self.remaining_possibilities
+            .retain(|word| is_guess_allowed_by_existing_guesses(&self.guesses, *word))
     }
 
     ///
@@ -385,15 +379,21 @@ impl<'a> Solver<'a> {
     ///
     fn recompute_word_probabilities(&mut self) {
         self.word_probabilities.clear();
-        self.word_probabilities.extend(
-            compute_word_probabilities(&self.remaining_possibilities, &self.word_weights));
+        self.word_probabilities.extend(compute_word_probabilities(
+            &self.remaining_possibilities,
+            &self.word_weights,
+        ));
 
         debug_assert!(
-            self.word_probabilities.is_empty() ||
-                (self.word_probabilities
+            self.word_probabilities.is_empty()
+                || (self
+                    .word_probabilities
                     .values()
                     .copied()
-                    .sum::<WordleFloat>() - 1.0).abs() < 0.000001,
+                    .sum::<WordleFloat>()
+                    - 1.0)
+                    .abs()
+                    < 0.000001,
             "weights must add up to exactly 1.0",
         );
     }
@@ -506,10 +506,10 @@ impl<'a> Solver<'a> {
     /// less than K.
     ///
     pub fn top_k_guesses<'b, const K: usize>(&'b self) -> TopK<ScoredCandidate<'a>, K>
-        where
-            'a: 'b,
-            [Option<ScoredCandidate<'a>>; K]: Default,
-            [Option<Score>; K]: Default,
+    where
+        'a: 'b,
+        [Option<ScoredCandidate<'a>>; K]: Default,
+        [Option<Score>; K]: Default,
     {
         // an efficiency hack, mentioned a few times above... if we are in default state and we have
         // cached data available, then we should return that instead of computing it
@@ -534,10 +534,10 @@ impl<'a> Solver<'a> {
     /// the default state at compile time (in gen_default_state_data.rs).
     ///
     pub fn compute_top_k_guesses<'b, const K: usize>(&'b self) -> TopK<ScoredCandidate<'a>, K>
-        where
-            'a: 'b,
-            [Option<ScoredCandidate<'a>>; K]: Default,
-            [Option<Score>; K]: Default
+    where
+        'a: 'b,
+        [Option<ScoredCandidate<'a>>; K]: Default,
+        [Option<Score>; K]: Default,
     {
         self.remaining_possibilities
             .iter()
@@ -557,7 +557,8 @@ impl<'a> Solver<'a> {
         let expected_info = self.expected_guess_info(guess);
 
         // weight (not probability!) of the word
-        let weight = self.word_weights
+        let weight = self
+            .word_weights
             .get(guess)
             .copied()
             .unwrap_or(MIN_WORD_WEIGHT);
@@ -628,7 +629,8 @@ impl<'a> Solver<'a> {
 
         // determine the average information gained
         #[allow(clippy::unnecessary_cast)]
-        probabilities.iter()
+        probabilities
+            .iter()
             // filter non-positive data (aka the 0s) because log2(0) is undefined
             .filter(|v| *v > &(0.0 as WordleFloat))
             .map(|v| v * -(v.log2()))
@@ -650,7 +652,10 @@ impl<'a> Solver<'a> {
     ///
     /// Returns all the guesses we've made so far.
     ///
-    pub fn iter_guesses<'b>(&'b self) -> impl Iterator<Item=&'b Guess> + 'b where 'a: 'b {
+    pub fn iter_guesses<'b>(&'b self) -> impl Iterator<Item = &'b Guess> + 'b
+    where
+        'a: 'b,
+    {
         iter_guesses(&self.guesses)
     }
 
@@ -689,7 +694,7 @@ fn is_guess_allowed_by_existing_guesses(guesses: &[Option<Guess>], guess: &str) 
 /// Helper which takes any slice of Option<Guess> and iterates through references to the Guesses
 /// that have been made.
 ///
-pub fn iter_guesses(guesses: &[Option<Guess>]) -> impl Iterator<Item=&Guess> {
+pub fn iter_guesses(guesses: &[Option<Guess>]) -> impl Iterator<Item = &Guess> {
     guesses.iter().map_while(|item| item.as_ref())
 }
 
@@ -720,8 +725,7 @@ pub fn iter_guesses(guesses: &[Option<Guess>]) -> impl Iterator<Item=&Guess> {
 /// depend on the size of the allowed_words and frequency data file. If you use a different dataset
 /// for word frequency it is recommended to experiment and tune these constants to this new dataset.
 ///
-fn compute_word_weights(ordered_words: &[String]) -> impl Iterator<Item=(&str, WordleFloat)> {
-
+fn compute_word_weights(ordered_words: &[String]) -> impl Iterator<Item = (&str, WordleFloat)> {
     // Implementation defines a few helper functions...
     //
     // * raw_compute_word_wight = actually do the computation, sometimes returning None when no
@@ -770,8 +774,7 @@ fn compute_word_weights(ordered_words: &[String]) -> impl Iterator<Item=(&str, W
 fn compute_word_probabilities<'a: 'b, 'b>(
     words: &'b HashSet<&'a str>,
     weights: &'b HashMap<&'a str, WordleFloat>,
-) -> impl Iterator<Item=(&'a str, WordleFloat)> + 'b
-{
+) -> impl Iterator<Item = (&'a str, WordleFloat)> + 'b {
     // get weights for each of the words provided, and sum that up, so we can perform normalization
     let total: WordleFloat = words.iter().map(|w| weights[w]).sum();
     // go through all the words (again) and divide each weight by the sum, producing a probability
@@ -785,12 +788,12 @@ fn compute_word_probabilities<'a: 'b, 'b>(
 fn compute_default_state_guesses<'a: 'b, 'b>(
     words: &'b HashSet<&'a str>,
     supplied_data: &'b [DefaultStateEntry],
-) -> impl Iterator<Item=ScoredCandidate<'a>> + 'b
-{
+) -> impl Iterator<Item = ScoredCandidate<'a>> + 'b {
     // go through the linear data from the text-file
     supplied_data.iter().map(|entry| {
         // find the correct &str from the 'words' HashSet
-        let word = *words.iter()
+        let word = *words
+            .iter()
             .find(|item| *item == &entry.word)
             .expect("default state data should contain possible words only");
 
@@ -802,16 +805,13 @@ fn compute_default_state_guesses<'a: 'b, 'b>(
         };
 
         // combine
-        ScoredCandidate {
-            word,
-            score,
-        }
+        ScoredCandidate { word, score }
     })
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::wordle::{Guess, iter_guesses};
+    use crate::wordle::{iter_guesses, Guess};
 
     #[test]
     fn test_guess_iterator() {
@@ -820,18 +820,32 @@ mod tests {
             word: [b'a', b'a', b'a', b'a', b'a'],
             coloring: [Excluded, Excluded, Excluded, Excluded, Excluded].into(),
             expected_info: 0.0,
-            entropy_delta: 0.0
+            entropy_delta: 0.0,
         };
 
         {
-            let guesses = [Some(example_guess.clone()), Some(example_guess.clone()), None, None, None, None];
+            let guesses = [
+                Some(example_guess.clone()),
+                Some(example_guess.clone()),
+                None,
+                None,
+                None,
+                None,
+            ];
             let data: Vec<Guess> = iter_guesses(&guesses).cloned().collect();
             let expected = [example_guess.clone(), example_guess.clone()];
             assert_eq!(&data, &expected, "should have exactly two guesses");
         }
 
         {
-            let guesses = [None, Some(example_guess.clone()), Some(example_guess.clone()), None, None, None];
+            let guesses = [
+                None,
+                Some(example_guess.clone()),
+                Some(example_guess.clone()),
+                None,
+                None,
+                None,
+            ];
             let count = iter_guesses(&guesses).count();
             assert_eq!(count, 0, "even though there are some guesses, they must be in order, and the first is None therefore there are no guesses, so the count should be 0... got {}", count);
         }

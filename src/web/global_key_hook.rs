@@ -22,10 +22,10 @@
  * SOFTWARE.
  */
 
-use wasm_bindgen::JsCast;
-use wasm_bindgen::prelude::*;
-use yew::prelude::*;
 use std::fmt;
+use wasm_bindgen::prelude::*;
+use wasm_bindgen::JsCast;
+use yew::prelude::*;
 
 const KEYDOWN_NAME: &str = "keydown";
 
@@ -120,6 +120,11 @@ impl KeyEvent {
 
 impl fmt::Debug for KeyEvent {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "KeyEvent[code={}, prevent_default={}]", self.code(), self.prevented)
+        write!(
+            f,
+            "KeyEvent[code={}, prevent_default={}]",
+            self.code(),
+            self.prevented
+        )
     }
 }

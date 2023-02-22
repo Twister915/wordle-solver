@@ -22,7 +22,7 @@
  * SOFTWARE.
  */
 
-use std::{io, process, fmt};
+use std::{fmt, io, process};
 
 const DEFAULT_VERSION: &str = "???";
 
@@ -34,7 +34,8 @@ fn determine_git_version() -> String {
     handle_cmd_git_output(
         process::Command::new("git")
             .args(&["rev-parse", "--short", "HEAD"])
-            .output())
+            .output(),
+    )
 }
 
 fn handle_cmd_git_output(input: io::Result<process::Output>) -> String {
@@ -82,7 +83,10 @@ fn handle_cmd_git_output(input: io::Result<process::Output>) -> String {
     // is present in this function, in the "all checks passed" path)
     //
     // we write a warning & return a default version string
-    warning(format_args!("unable to determine version... using default version '{}'", DEFAULT_VERSION));
+    warning(format_args!(
+        "unable to determine version... using default version '{}'",
+        DEFAULT_VERSION
+    ));
     DEFAULT_VERSION.to_string()
 }
 
@@ -90,7 +94,10 @@ fn process_command_output_bytes(name: &str, b: Vec<u8>) -> Option<String> {
     match String::from_utf8(b) {
         Ok(str) => Some(str),
         Err(err) => {
-            warning(format_args!("failed to read {} output (not utf8??)... err={:?}", name, err));
+            warning(format_args!(
+                "failed to read {} output (not utf8??)... err={:?}",
+                name, err
+            ));
             None
         }
     }

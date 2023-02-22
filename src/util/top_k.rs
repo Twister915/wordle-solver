@@ -32,12 +32,12 @@ pub struct TopK<E, const K: usize> {
 
 impl<Element, const K: usize> TopK<Element, K> {
     pub fn new<Itr, Score, ScoringFunc>(iter: Itr, f: ScoringFunc) -> Self
-        where
-            Itr: Iterator<Item=Element>,
-            ScoringFunc: Fn(&Element) -> Score,
-            Score: PartialOrd<Score>,
-            [Option<Element>; K]: Default,
-            [Option<Score>; K]: Default,
+    where
+        Itr: Iterator<Item = Element>,
+        ScoringFunc: Fn(&Element) -> Score,
+        Score: PartialOrd<Score>,
+        [Option<Element>; K]: Default,
+        [Option<Score>; K]: Default,
     {
         // these two arrays are coordinated such that if scores[x].is_some() then items[x].is_some()
         // scores[x] is f(&items[x])
@@ -97,7 +97,7 @@ impl<Element, const K: usize> ExactSizeIterator for TopK<Element, K> {}
 impl<Element, const K: usize> FusedIterator for TopK<Element, K> {}
 
 #[inline]
-fn array_insert<E, const N: usize>(elems: &mut[E; N], mut tmp: E, idx: usize) {
+fn array_insert<E, const N: usize>(elems: &mut [E; N], mut tmp: E, idx: usize) {
     #[allow(clippy::needless_range_loop)]
     for i in idx..N {
         std::mem::swap(&mut tmp, &mut elems[i]);
@@ -106,11 +106,11 @@ fn array_insert<E, const N: usize>(elems: &mut[E; N], mut tmp: E, idx: usize) {
 
 pub trait TopKExt: Iterator + Sized {
     fn top_k<Score, ScoreFn, const N: usize>(self, score_f: ScoreFn) -> TopK<Self::Item, N>
-        where
-            ScoreFn: Fn(&Self::Item) -> Score,
-            Score: PartialOrd<Score>,
-            [Option<Self::Item>; N]: Default,
-            [Option<Score>; N]: Default,
+    where
+        ScoreFn: Fn(&Self::Item) -> Score,
+        Score: PartialOrd<Score>,
+        [Option<Self::Item>; N]: Default,
+        [Option<Score>; N]: Default,
     {
         TopK::new(self, score_f)
     }

@@ -23,8 +23,8 @@
  */
 
 mod color;
-mod prelude;
-mod game;
 mod data;
+mod game;
+mod prelude;
 
-pub use {game::*, data::*, color::*, prelude::*};
+pub use {color::*, data::*, game::*, prelude::*};

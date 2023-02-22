@@ -22,10 +22,10 @@
  * SOFTWARE.
  */
 
-use yew::prelude::*;
-use std::borrow::Borrow;
 use super::global_key_hook::*;
 use crate::wordle::*;
+use std::borrow::Borrow;
+use yew::prelude::*;
 
 pub struct App {
     solver: StaticSolver,
@@ -43,7 +43,7 @@ pub enum Msg {
     UpdateColoring(usize),
     MakeGuess,
     ClearGuess,
-    OnKeyDown(KeyEvent)
+    OnKeyDown(KeyEvent),
 }
 
 impl Component for App {
@@ -56,8 +56,7 @@ impl Component for App {
             recommendations: Vec::default(),
             filled_guess: [None; WORD_SIZE],
             filled_colors: [Coloring::Excluded; WORD_SIZE],
-            keydown_listener: KeyListener::create(ctx.link()
-                .callback(Msg::OnKeyDown))
+            keydown_listener: KeyListener::create(ctx.link().callback(Msg::OnKeyDown))
                 .expect("should be able to attach key listener"),
         };
         out.update_recommendations();
@@ -71,7 +70,7 @@ impl Component for App {
             PickRecommendation(recommendation) => {
                 self.accept_suggestion(recommendation.as_str());
                 true
-            },
+            }
             UpdateColoring(idx) => {
                 if self.solver.can_guess() {
                     let src = &mut self.filled_colors[idx];
@@ -120,7 +119,8 @@ impl Component for App {
 impl App {
     fn update_recommendations(&mut self) {
         self.recommendations.clear();
-        self.recommendations.extend(self.solver.top_k_guesses::<{ N_RECOMMENDATIONS }>());
+        self.recommendations
+            .extend(self.solver.top_k_guesses::<{ N_RECOMMENDATIONS }>());
     }
 
     fn show_info_html() -> Html {
@@ -285,8 +285,7 @@ impl App {
         idx: usize,
         item: &ScoredCandidate<'static>,
         ctx: &Context<Self>,
-    ) -> Html
-    {
+    ) -> Html {
         html! {
             <div
                 class="item"
@@ -417,8 +416,7 @@ impl App {
         emoji: &'static str,
         enabled: bool,
         msg: Msg,
-    ) -> Html
-    {
+    ) -> Html {
         html! {
             <div
                 class={classes!("button", c, if enabled { "enabled" } else { "disabled" })}
@@ -434,7 +432,8 @@ impl App {
             "reset-button",
             "❌",
             self.enable_reset_button(),
-            Msg::ClearGuess)
+            Msg::ClearGuess,
+        )
     }
 
     fn show_confirm_button(&self, ctx: &Context<Self>) -> Html {
@@ -443,7 +442,8 @@ impl App {
             "confirm-button",
             "✔️",
             self.enable_confirm_button(),
-            Msg::MakeGuess)
+            Msg::MakeGuess,
+        )
     }
 
     fn show_wordle_empty_row(&self) -> Html {
@@ -472,10 +472,7 @@ impl App {
         assert!(is_wordle_str(suggestion));
 
         let bs = suggestion.as_bytes();
-        for (src, target) in bs.iter()
-            .copied()
-            .zip(self.filled_guess.iter_mut())
-        {
+        for (src, target) in bs.iter().copied().zip(self.filled_guess.iter_mut()) {
             *target = Some(src as char);
         }
     }
@@ -507,7 +504,7 @@ impl App {
     }
 
     fn guess_str(&self) -> Option<String> {
-        let mut guess= [0; WORD_SIZE];
+        let mut guess = [0; WORD_SIZE];
         #[allow(clippy::needless_range_loop)]
         for i in 0..WORD_SIZE {
             if let Some(c) = self.filled_guess[i] {
@@ -624,11 +621,11 @@ impl App {
                 } else {
                     false
                 }
-            },
+            }
             other => {
                 log::debug!("unhandled key {}", other);
                 false
-            },
+            }
         }
     }
 
@@ -687,12 +684,13 @@ impl App {
     fn handle_enter(&mut self, event: &mut KeyEvent) -> bool {
         // enter will either... submit the current answer (if possible), or if the game is over,
         // it will reset the game (think of it as a shortcut to hitting the X button)
-        let out = self.make_guess() || if !self.solver.can_guess() {
-            self.reset();
-            true
-        } else {
-            false
-        };
+        let out = self.make_guess()
+            || if !self.solver.can_guess() {
+                self.reset();
+                true
+            } else {
+                false
+            };
 
         if out {
             event.prevent_default();

@@ -21,7 +21,12 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-use std::{io::{self, Write, BufRead}, fs, time::{Duration, Instant}, collections::HashSet};
+use std::{
+    collections::HashSet,
+    fs,
+    io::{self, BufRead, Write},
+    time::{Duration, Instant},
+};
 use wordle_site::wordle::*;
 
 fn main() {
@@ -45,14 +50,11 @@ fn write_default_state_data() -> io::Result<()> {
 
     let (dur, out): (Duration, io::Result<()>) = timed(move || {
         // compute the data we should put into the file, and write it...
-        for item in Solver::default().compute_top_k_guesses::<{N_RECOMMENDATIONS}>() {
+        for item in Solver::default().compute_top_k_guesses::<{ N_RECOMMENDATIONS }>() {
             writeln!(
                 f,
                 "{} {} {} {}",
-                item.word,
-                item.score.abs,
-                item.score.expected_info,
-                item.score.weight,
+                item.word, item.score.abs, item.score.expected_info, item.score.weight,
             )?;
         }
         Ok(())
@@ -62,14 +64,20 @@ fn write_default_state_data() -> io::Result<()> {
         "done! wrote {} recommendations to {} in {:.2}s",
         N_RECOMMENDATIONS,
         at,
-        dur.as_secs_f64());
+        dur.as_secs_f64()
+    );
     Ok(())
 }
 
 fn write_ordered_allowed() -> io::Result<()> {
     let (dur, out) = timed(write_ordered_allowed_inner);
     let (name, lines) = out?;
-    eprintln!("done! wrote {} words to {} in {:.2}s", lines, name, dur.as_secs_f64());
+    eprintln!(
+        "done! wrote {} words to {} in {:.2}s",
+        lines,
+        name,
+        dur.as_secs_f64()
+    );
     Ok(())
 }
 
@@ -78,12 +86,17 @@ fn write_ordered_allowed_inner() -> io::Result<(String, usize)> {
     let ordered = read_ordered_frequency_data_words()?;
     let to_write = ordered_words(&unordered, &ordered);
 
-    let at = format!("{}{}", EMBED_DATA_DIRECTORY, ORDERED_ALLOWED_WORDS_FILE_NAME);
-    let mut out = io::BufWriter::new(fs::File::options()
-        .truncate(true)
-        .create(true)
-        .write(true)
-        .open(&at)?);
+    let at = format!(
+        "{}{}",
+        EMBED_DATA_DIRECTORY, ORDERED_ALLOWED_WORDS_FILE_NAME
+    );
+    let mut out = io::BufWriter::new(
+        fs::File::options()
+            .truncate(true)
+            .create(true)
+            .write(true)
+            .open(&at)?,
+    );
 
     let mut count = 0;
     for item in to_write {
@@ -94,7 +107,10 @@ fn write_ordered_allowed_inner() -> io::Result<(String, usize)> {
     Ok((at, count))
 }
 
-fn ordered_words<'a>(unordered: &'a[String], ordered: &'a[String]) -> impl Iterator<Item=&'a str> + 'a {
+fn ordered_words<'a>(
+    unordered: &'a [String],
+    ordered: &'a [String],
+) -> impl Iterator<Item = &'a str> + 'a {
     // we basically have to output the "unordered" list in the following order:
     // * a given word must be in the same position as it is in "ordered" (if it is contained in "ordered")
     // * all words in unordered not in ordered are emitted at the end in original order
@@ -104,12 +120,16 @@ fn ordered_words<'a>(unordered: &'a[String], ordered: &'a[String]) -> impl Itera
     let mut ordered_s = HashSet::new();
     ordered_s.extend(ordered.iter().map(|i| i.as_str()));
 
-    ordered.iter()
+    ordered
+        .iter()
         .map(|s| s.as_str())
         .filter(move |item| unordered_s.contains(*item))
-        .chain(unordered.iter()
-            .filter(move |item| !ordered_s.contains(item.as_str()))
-            .map(|v| v.as_str()))
+        .chain(
+            unordered
+                .iter()
+                .filter(move |item| !ordered_s.contains(item.as_str()))
+                .map(|v| v.as_str()),
+        )
 }
 
 fn read_unordered_allowed_words() -> io::Result<Vec<String>> {
@@ -136,7 +156,8 @@ fn read_ordered_frequency_data_words() -> io::Result<Vec<String>> {
 }
 
 fn timed<R, F>(f: F) -> (Duration, R)
-    where F: FnOnce() -> R
+where
+    F: FnOnce() -> R,
 {
     let start_at = Instant::now();
     let out = f();
