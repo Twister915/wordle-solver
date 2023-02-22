@@ -22,12 +22,12 @@
  * SOFTWARE.
  */
 
+use self::Coloring::*;
+use super::prelude::*;
 use std::fmt::{Debug, Display, Formatter};
 #[cfg(test)]
 use std::iter::FusedIterator;
 use std::ops::{Index, IndexMut};
-use self::Coloring::*;
-use super::prelude::*;
 
 ///
 /// Any set of colorings can be converted to a "code" which uniquely identifies that specific
@@ -83,7 +83,7 @@ impl Coloring {
         match self {
             Excluded => "⬛",
             Misplaced => "🟨",
-            Correct => "🟩"
+            Correct => "🟩",
         }
     }
 }
@@ -238,7 +238,9 @@ struct IterAllColorings {
 #[cfg(test)]
 impl Default for IterAllColorings {
     fn default() -> Self {
-        Self { next: Some(Colorings::default()) }
+        Self {
+            next: Some(Colorings::default()),
+        }
     }
 }
 
@@ -339,7 +341,11 @@ mod tests {
         let mut seen = [false; ColoringCode::MAX as usize];
         for colorings in Colorings::iter_all_possible() {
             let code = colorings.to_code();
-            assert!(!seen[code as usize], "expected no duplicate codes, got duplicate {}", code);
+            assert!(
+                !seen[code as usize],
+                "expected no duplicate codes, got duplicate {}",
+                code
+            );
             seen[code as usize] = true;
         }
     }

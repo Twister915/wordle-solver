@@ -27,7 +27,6 @@
 // It is unlikely you will ever change the WORD_SIZE but if you want to, it should be supported by
 // this implementation.
 
-
 // how many characters are in a wordle answer?
 pub const WORD_SIZE: usize = 5;
 // how many turns are you allowed to play?

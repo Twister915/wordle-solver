@@ -23,11 +23,11 @@
  */
 
 use crate::wordle::prelude::*;
+use lazy_static::lazy_static;
+use rust_embed::RustEmbed;
 use std::num::ParseFloatError;
 use std::str::Utf8Error;
-use rust_embed::RustEmbed;
 use thiserror::Error;
-use lazy_static::lazy_static;
 
 // Stores "input data" which is manually updated/configured
 pub const DATA_DIRECTORY: &str = "data/";
@@ -88,14 +88,16 @@ impl Data {
             allowed_words: try_read_allowed_words()?,
             default_state_data: try_read_default_state_data()?,
         };
-        log::debug!("got {} allowed words from data file", out.allowed_words.len());
+        log::debug!(
+            "got {} allowed words from data file",
+            out.allowed_words.len()
+        );
         if let Some(default_state) = &out.default_state_data {
             log::debug!("got {} default items", default_state.len());
         }
         Ok(out)
     }
 }
-
 
 /// Reads the allowed words text file. This is pretty simple: one allowed word per line.
 fn try_read_allowed_words() -> Result<Vec<String>, LoadDataErr> {
@@ -117,8 +119,7 @@ fn try_read_default_state_data() -> Result<Option<Vec<DefaultStateEntry>>, LoadD
 
     let mut out = Vec::with_capacity(N_RECOMMENDATIONS);
     // parse each line in default_state_data
-    for line in raw_data.lines()
-    {
+    for line in raw_data.lines() {
         // this file is expected to contain 4 pieces of information on each line, split by a space:
         //
         // * word being suggested (5 letter string / wordle word)
@@ -147,7 +148,8 @@ fn try_read_default_state_data() -> Result<Option<Vec<DefaultStateEntry>>, LoadD
         // isn't valid, or doesn't exist
         let mut consume_float = || {
             // first get the string representation & handle the case when it doesn't exist
-            let raw = parts.next()
+            let raw = parts
+                .next()
                 .ok_or_else(|| LoadDataErr::BadDefaultDataLine(line.to_string()))?;
 
             // then try to parse it as a WordleFloat (aka f32/f64), and wrap the error if it can't
@@ -176,7 +178,7 @@ fn retrieve_file_as_str(name: &str) -> Result<Option<String>, LoadDataErr> {
     let f: rust_embed::EmbeddedFile = if let Some(data) = RawData::get(name) {
         data
     } else {
-        #[cfg(not(target_arch="wasm32"))]
+        #[cfg(not(target_arch = "wasm32"))]
         if let Ok(mut f) = std::fs::File::open(format!("{}{}", EMBED_DATA_DIRECTORY, name)) {
             let mut out = String::default();
             if std::io::Read::read_to_string(&mut f, &mut out).is_ok() {
@@ -187,5 +189,9 @@ fn retrieve_file_as_str(name: &str) -> Result<Option<String>, LoadDataErr> {
         return Ok(None);
     };
 
-    Ok(Some(std::str::from_utf8(&f.data).map_err(LoadDataErr::EncodingError)?.to_string()))
+    Ok(Some(
+        std::str::from_utf8(&f.data)
+            .map_err(LoadDataErr::EncodingError)?
+            .to_string(),
+    ))
 }
