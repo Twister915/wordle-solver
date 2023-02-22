@@ -84,7 +84,7 @@ fn write_ordered_allowed() -> io::Result<()> {
 fn write_ordered_allowed_inner() -> io::Result<(String, usize)> {
     let unordered = read_unordered_allowed_words()?;
     let ordered = read_ordered_frequency_data_words()?;
-    let to_write = ordered_words(&unordered, &ordered);
+    let to_write = ordered_words(&unordered, &ordered).filter(|s| is_wordle_str(s));
 
     let at = format!(
         "{}{}",
@@ -100,7 +100,9 @@ fn write_ordered_allowed_inner() -> io::Result<(String, usize)> {
 
     let mut count = 0;
     for item in to_write {
-        writeln!(out, "{}", item)?;
+        let compressed = CompressedWord::new(item);
+        assert_eq!(compressed.to_string(), item);
+        out.write_all(&compressed.as_bytes())?;
         count += 1;
     }
 

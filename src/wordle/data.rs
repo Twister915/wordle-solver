@@ -22,6 +22,8 @@
  * SOFTWARE.
  */
 
+use std::borrow::Cow;
+use std::mem;
 use crate::wordle::prelude::*;
 use lazy_static::lazy_static;
 use rust_embed::RustEmbed;
@@ -37,7 +39,7 @@ pub const ALLOWED_WORDS_FILE_NAME: &str = "allowed_words.txt";
 // Stores "derived data" which is generated at build time using the data from the text-files above
 pub const EMBED_DATA_DIRECTORY: &str = "txt_data/";
 pub const DEFAULT_STATE_DATA_FILE_NAME: &str = "default_state_data.txt";
-pub const ORDERED_ALLOWED_WORDS_FILE_NAME: &str = "allowed_words_ord.txt";
+pub const ORDERED_ALLOWED_WORDS_FILE_NAME: &str = "allowed_words_ord.bin";
 
 lazy_static! {
     pub static ref DATA: Data = Data::read().expect("should have no failures reading data...");
@@ -45,7 +47,52 @@ lazy_static! {
 
 #[derive(RustEmbed)]
 #[folder = "txt_data/"]
+#[exclude = ".*"]
 struct RawData;
+
+const COMPRESSED_SIZE_BITS: usize = (ALPHABET_SIZE as u64).pow(WORD_SIZE as _).ilog2() as usize;
+pub const COMPRESSED_SIZE: usize = (COMPRESSED_SIZE_BITS + 7) / 8;
+
+#[derive(Copy, Clone)]
+pub struct CompressedWord([u8; COMPRESSED_SIZE]);
+
+impl CompressedWord {
+    pub fn new(s: &str) -> Self {
+        assert!(is_wordle_str(s));
+        let mut x = 0;
+
+        for ch in s.bytes().rev() {
+            x *= ALPHABET_SIZE as u64;
+            x += ch as u64 - b'a' as u64;
+        }
+
+        let bytes = x.to_le_bytes();
+        let (important, unimportant) = bytes.split_at(COMPRESSED_SIZE);
+        debug_assert!(unimportant.iter().all(|&b| b == 0));
+        let mut result = [0; COMPRESSED_SIZE];
+        result.copy_from_slice(important);
+
+        Self(result)
+    }
+
+    pub fn as_bytes(self) -> [u8; COMPRESSED_SIZE] {
+        self.0
+    }
+
+    pub fn to_string(self) -> String {
+        let mut res = String::with_capacity(WORD_SIZE);
+
+        let mut x = [0; mem::size_of::<u64>()];
+        x[..COMPRESSED_SIZE].copy_from_slice(&self.0);
+        let mut x = u64::from_le_bytes(x);
+        for _ in 0..WORD_SIZE {
+            let ch = (x % ALPHABET_SIZE as u64) as u8 + b'a';
+            x /= ALPHABET_SIZE as u64;
+            res.push(ch as char);
+        }
+        res
+    }
+}
 
 /// Holds all of the data represented by the static/embedded text files
 #[derive(Clone, Debug)]
@@ -101,11 +148,10 @@ impl Data {
 
 /// Reads the allowed words text file. This is pretty simple: one allowed word per line.
 fn try_read_allowed_words() -> Result<Vec<String>, LoadDataErr> {
-    Ok(retrieve_file_as_str(ORDERED_ALLOWED_WORDS_FILE_NAME)?
+    Ok(retrieve_file_as_bytes(ORDERED_ALLOWED_WORDS_FILE_NAME)?
         .ok_or(LoadDataErr::MissingAllowedWordsFile)?
-        .lines()
-        .map(normalize_wordle_word)
-        .filter(|line| is_wordle_str(line))
+        .chunks(COMPRESSED_SIZE)
+        .map(|b| CompressedWord(b.try_into().unwrap()).to_string())
         .collect())
 }
 
@@ -174,24 +220,27 @@ fn try_read_default_state_data() -> Result<Option<Vec<DefaultStateEntry>>, LoadD
     Ok(Some(out))
 }
 
-fn retrieve_file_as_str(name: &str) -> Result<Option<String>, LoadDataErr> {
+fn retrieve_file_as_bytes(name: &str) -> Result<Option<Cow<'static, [u8]>>, LoadDataErr> {
     let f: rust_embed::EmbeddedFile = if let Some(data) = RawData::get(name) {
         data
     } else {
         #[cfg(not(target_arch = "wasm32"))]
-        if let Ok(mut f) = std::fs::File::open(format!("{}{}", EMBED_DATA_DIRECTORY, name)) {
-            let mut out = String::default();
-            if std::io::Read::read_to_string(&mut f, &mut out).is_ok() {
-                return Ok(Some(out));
-            }
+        if let Ok(data) = std::fs::read(format!("{}{}", EMBED_DATA_DIRECTORY, name)) {
+            return Ok(Some(Cow::Owned(data)));
         }
 
         return Ok(None);
     };
 
-    Ok(Some(
-        std::str::from_utf8(&f.data)
-            .map_err(LoadDataErr::EncodingError)?
-            .to_string(),
-    ))
+    Ok(Some(f.data))
+}
+
+fn retrieve_file_as_str(name: &str) -> Result<Option<Cow<'static, str>>, LoadDataErr> {
+    retrieve_file_as_bytes(name).and_then(|bytes| -> Result<_, LoadDataErr> {
+        match bytes {
+            Some(Cow::Borrowed(b)) => Ok(Some(Cow::Borrowed(std::str::from_utf8(b)?))),
+            Some(Cow::Owned(v)) => Ok(Some(Cow::Owned(String::from_utf8(v).map_err(|e| e.utf8_error())?))),
+            None => Ok(None)
+        }
+    })
 }

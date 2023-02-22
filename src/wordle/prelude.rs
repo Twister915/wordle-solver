@@ -66,7 +66,7 @@ pub fn count_letters_bytes(word: &[u8]) -> [usize; ALPHABET_SIZE] {
 
 /// Returns the index of the given letter within the alphabet (like 'a' = 0, 'b' = 1, etc...)
 pub fn letter_idx(letter: u8) -> usize {
-    ((letter as isize) - ('a' as isize)) as usize
+    (letter - b'a').into()
 }
 
 /// Checks whether or not the passed string meets the constraints of a "wordle_str"
