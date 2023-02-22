@@ -23,7 +23,5 @@
  */
 
 mod top_k;
-mod option_iter;
 
 pub use top_k::*;
-pub use option_iter::*;
