@@ -690,7 +690,7 @@ fn is_guess_allowed_by_existing_guesses(guesses: &[Option<Guess>], guess: &str) 
 /// that have been made.
 ///
 pub fn iter_guesses(guesses: &[Option<Guess>]) -> impl Iterator<Item=&Guess> {
-    OptionIter::new(guesses.iter().map(|v| v.as_ref()))
+    guesses.iter().map_while(|item| item.as_ref())
 }
 
 ///
