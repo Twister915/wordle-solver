@@ -684,19 +684,20 @@ impl App {
     fn handle_enter(&mut self, event: &mut KeyEvent) -> bool {
         // enter will either... submit the current answer (if possible), or if the game is over,
         // it will reset the game (think of it as a shortcut to hitting the X button)
-        let out = self.make_guess()
-            || if !self.solver.can_guess() {
-                self.reset();
-                true
-            } else {
-                false
-            };
+        let handled = if self.make_guess() {
+            true
+        } else if !self.solver.can_guess() {
+            self.reset();
+            true
+        } else {
+            false
+        };
 
-        if out {
+        if handled {
             event.prevent_default();
         }
 
-        out
+        handled
     }
 
     fn reset(&mut self) {

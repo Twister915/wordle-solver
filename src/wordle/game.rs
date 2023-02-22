@@ -385,15 +385,14 @@ impl<'a> Solver<'a> {
         ));
 
         debug_assert!(
-            self.word_probabilities.is_empty()
-                || (self
+            self.word_probabilities.is_empty() || {
+                let sum = self
                     .word_probabilities
                     .values()
                     .copied()
-                    .sum::<WordleFloat>()
-                    - 1.0)
-                    .abs()
-                    < 0.000001,
+                    .sum::<WordleFloat>();
+                sum.abs() < 0.000001
+            },
             "weights must add up to exactly 1.0",
         );
     }
