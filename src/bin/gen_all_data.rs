@@ -42,11 +42,7 @@ fn do_all() -> io::Result<()> {
 fn write_default_state_data() -> io::Result<()> {
     let at = format!("{}{}", EMBED_DATA_DIRECTORY, DEFAULT_STATE_DATA_FILE_NAME);
     // open the file to contain the cached default state data
-    let mut f = fs::File::options()
-        .truncate(true)
-        .create(true)
-        .write(true)
-        .open(&at)?;
+    let mut f = fs::File::create(&at)?;
 
     let (dur, out): (Duration, io::Result<()>) = timed(move || {
         // compute the data we should put into the file, and write it...
@@ -116,11 +112,9 @@ fn ordered_words<'a>(
     // we basically have to output the "unordered" list in the following order:
     // * a given word must be in the same position as it is in "ordered" (if it is contained in "ordered")
     // * all words in unordered not in ordered are emitted at the end in original order
-    let mut unordered_s = HashSet::new();
-    unordered_s.extend(unordered.iter().map(|i| i.as_str()));
+    let unordered_s: HashSet<&str> = unordered.iter().map(|s| s.as_str()).collect();
 
-    let mut ordered_s = HashSet::new();
-    ordered_s.extend(ordered.iter().map(|i| i.as_str()));
+    let ordered_s: HashSet<&str> = ordered.iter().map(|s| s.as_str()).collect();
 
     ordered
         .iter()

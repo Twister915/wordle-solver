@@ -36,13 +36,11 @@ impl<Element, const K: usize> TopK<Element, K> {
         Itr: Iterator<Item = Element>,
         ScoringFunc: Fn(&Element) -> Score,
         Score: PartialOrd<Score>,
-        [Option<Element>; K]: Default,
-        [Option<Score>; K]: Default,
     {
         // these two arrays are coordinated such that if scores[x].is_some() then items[x].is_some()
         // scores[x] is f(&items[x])
-        let mut items: [Option<Element>; K] = Default::default();
-        let mut scores: [Option<Score>; K] = Default::default();
+        let mut items: [Option<Element>; K] = std::array::from_fn(|_| None);
+        let mut scores: [Option<Score>; K] = std::array::from_fn(|_| None);
         let mut size = 0;
 
         // exhaust the iterator (look at every item)
@@ -109,8 +107,6 @@ pub trait TopKExt: Iterator + Sized {
     where
         ScoreFn: Fn(&Self::Item) -> Score,
         Score: PartialOrd<Score>,
-        [Option<Self::Item>; N]: Default,
-        [Option<Score>; N]: Default,
     {
         TopK::new(self, score_f)
     }
