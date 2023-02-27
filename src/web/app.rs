@@ -590,8 +590,7 @@ impl App {
                 <>{" and "}</>
                 {Self::show_link("https://yew.rs/", "Yew")}
                 <>{". Available on "}</>
-                <span class="coming-soon">{"GitHub"}</span>
-                <>{" (coming soon!)."}</>
+                {Self::show_link("https://github.com/Twister915/wordle-solver/", "GitHub")}
             </div>
         }
     }
