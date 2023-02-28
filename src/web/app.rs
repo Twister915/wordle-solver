@@ -74,12 +74,11 @@ impl Component for App {
             UpdateColoring(idx) => {
                 if self.solver.can_guess() {
                     let src = &mut self.filled_colors[idx];
-                    let mut next_coloring = match *src {
+                    *src = match *src {
                         Coloring::Excluded => Coloring::Misplaced,
                         Coloring::Misplaced => Coloring::Correct,
                         Coloring::Correct => Coloring::Excluded,
                     };
-                    std::mem::swap(src, &mut next_coloring);
                     true
                 } else {
                     false
