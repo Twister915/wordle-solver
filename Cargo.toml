@@ -19,8 +19,8 @@ version = "0.1"
 features = ["wasm-bindgen"]
 
 [dependencies.rust-embed]
-version = "6.4"
-features = ["debug-embed"]
+version = "8"
+features = ["debug-embed", "include-exclude"]
 
 [dependencies.web-sys]
 version = "0.3"
